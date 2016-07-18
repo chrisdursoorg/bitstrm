@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 2.8)
 
-cmake_minimum_required(VERSION 2.8)
+project(example)
+
+set(SRCS  example.cpp)
+
+include_directories("${CMAKE_SOURCE_DIR}")
+
+add_executable(${PROJECT_NAME} ${SRCS})
+
 
 # CMAKE_BUILD_TYPE=Release,Debug
 

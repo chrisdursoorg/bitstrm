@@ -16,23 +16,16 @@ unittest/* contains tests and examples of all the functions in the library inclu
 performance/ contains encoding decoding stats as well as benchmark against register, and short integer values in std::sort
 
 ### Example 
-The simple [example.cpp](https://github.com/chrisdursoorg/bitstrm/blob/master/example.cpp) illustrates using inlined _Size_ blocks and _Control_ bits and interpreting sub bitstrm's for ureg values.
+
+Check out [example.cpp](https://github.com/chrisdursoorg/bitstrm/blob/master/example.cpp), at just over a 100 lines of code its a little bit much to paste here.  [example.cpp](https://github.com/chrisdursoorg/bitstrm/blob/master/example.cpp) encodes 32 largely small integers ranging [0,63 bits] by coding each integer as [[_Size_]<_Value_><_Control_>] where _Size_ is a 6 bit integer _Size_ range [0..63], _Value_ is the value encoded as unsigned integer of _Size_ bits and _Control_ is a boolean indicating that the next optional _Size_ field is inlined and must be reset for subsequent _Value_s.  
+
+The coding saves space by keeping a running count of how many bits are wasted.  It saves a little more space than just prefixing the size before each value as it illustrates the flexibility of bitstrm.  When the cumulatively wasted is greater than saving a _Size_ the _Control_ bit goes high indicating a reseting _Size_ and the cumulative waste.  In this example the codec saves 77% when contrasting with the standard 64 bit representation.
+
+This example is meant to be simple and not really practical.  The codec could for instance make more passes and determine the best places to reset the _Size_. And one can note that whenever _Size_ is reset, the most significant bit of the subsequent value is implied, hence we redundantly save this one bit.  Finally, maximally 63 bit integers are supported as _Size_ is in range of [0,63].  Since a _Size_ 0 bitstrm integer is well defined (as zero) we would have to use a 7 bit _Size_ field to address 64 bit values, and then what would we do with all those extra range of [65,126]?
 
 ```
--*- mode: compilation; default-directory: "~/git/build/" -*-
-Compilation started at Sun Jul 17 21:01:36
-
-cd ~/git/build && make; ~/git/build/example
-Scanning dependencies of target example
-[  7%] Building CXX object CMakeFiles/example.dir/example.cpp.o
-[ 14%] Linking CXX executable example
-[ 14%] Built target example
-[ 28%] Built target bitstrm
-[ 42%] Built target bit_int_itr_unittest
-[ 57%] Built target bitstrm_unittest
-[ 71%] Built target reg_unittest
-[ 85%] Built target utility_unittest
-[100%] Built target performnance_tests
+~/git/build/example
+...
 Simple example where we are going to store and then recall some binary values.
 The values will generally be near 0 and will all be unsigned
 

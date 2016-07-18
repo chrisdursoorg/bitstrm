@@ -15,9 +15,109 @@ unittest/* contains tests and examples of all the functions in the library inclu
 
 performance/ contains encoding decoding stats as well as benchmark against register, and short integer values in std::sort
 
+### Example 
+The simple [example.cpp](https://github.com/chrisdursoorg/bitstrm/blob/master/example.cpp) illustrates using inlined _Size_ blocks and _Control_ bits and interpreting sub bitstrm's for ureg values.
+
+```
+-*- mode: compilation; default-directory: "~/git/build/" -*-
+Compilation started at Sun Jul 17 21:01:36
+
+cd ~/git/build && make; ~/git/build/example
+Scanning dependencies of target example
+[  7%] Building CXX object CMakeFiles/example.dir/example.cpp.o
+[ 14%] Linking CXX executable example
+[ 14%] Built target example
+[ 28%] Built target bitstrm
+[ 42%] Built target bit_int_itr_unittest
+[ 57%] Built target bitstrm_unittest
+[ 71%] Built target reg_unittest
+[ 85%] Built target utility_unittest
+[100%] Built target performnance_tests
+Simple example where we are going to store and then recall some binary values.
+The values will generally be near 0 and will all be unsigned
+
+This codec is made mostly for simplicity, rather than utility.
+we could for instance recognize that first Value 1st bit is
+redundant with Size magnitude and do a better job deciding where
+to have an extra pad 0 bit or a new Size block.
+
+Decode: [[Size]<Value><Control>], if control is 1 read [Size], [Size] is 6 bits
+Code:   [[Size]<Value><Control>], adopt a Size to hold Value, retain Size until until
+1) Size cannot hold Value (not enough bits), or 2) total wasted bits (preceeding zeros)
+is greater than 6
+
+example data:
+12,
+0,
+1,
+2,
+3,
+4,
+5,
+1234567,
+922338962904924173,
+65,
+82,
+23,
+11,
+1,
+1,
+1,
+890,
+54,
+0,
+0,
+0,
+0,
+17,
+232902332,
+89,
+2398,
+12,
+12,
+12,
+558,
+235,
+238923,
+
+total_bits: 468 bytes: 59 bits/number: 14.625 savings: 76.9531%
+verify: 468 bits used equals: 468 bits reserved
+restore: 12 matches: 12
+restore: 0 matches: 0
+restore: 1 matches: 1
+restore: 2 matches: 2
+restore: 3 matches: 3
+restore: 4 matches: 4
+restore: 5 matches: 5
+restore: 1234567 matches: 1234567
+restore: 922338962904924173 matches: 922338962904924173
+restore: 65 matches: 65
+restore: 82 matches: 82
+restore: 23 matches: 23
+restore: 11 matches: 11
+restore: 1 matches: 1
+restore: 1 matches: 1
+restore: 1 matches: 1
+restore: 890 matches: 890
+restore: 54 matches: 54
+restore: 0 matches: 0
+restore: 0 matches: 0
+restore: 0 matches: 0
+restore: 0 matches: 0
+restore: 17 matches: 17
+restore: 232902332 matches: 232902332
+restore: 89 matches: 89
+restore: 2398 matches: 2398
+restore: 12 matches: 12
+restore: 12 matches: 12
+restore: 12 matches: 12
+restore: 558 matches: 558
+restore: 235 matches: 235
+restore: 238923 matches: 238923
+```
 ---
 
-### Example Building and Tests
+### Building and Unittests
 
 ```
 bash-3.2$ # https://github.com/chrisdursoorg/bitstrm

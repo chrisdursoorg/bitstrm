@@ -27,7 +27,7 @@ ureg inline bitstrm::iread_ureg(unsigned bitSz){ return iread_as_impl<ureg>(bitS
 
 template<typename _INT_TYPE>
 _INT_TYPE inline bitstrm::iread_as_impl(unsigned bitSz){
-
+  assert(bitSz <= c_register_bits && "read only defined for regiter bits"); 
   size_t endpos(off_ + bitSz);
 
   if(endpos < c_register_bits && bitSz ){
@@ -60,6 +60,8 @@ _INT_TYPE inline bitstrm::iread_as_impl(unsigned bitSz){
 
 inline void bitstrm::iwrite(unsigned bitSz, ureg value){
   
+  assert(bitSz <= c_register_bits && "only defined for regitered bits"); 
+
   if(0 == bitSz)
     return;
 
@@ -128,8 +130,7 @@ inline unsigned bitstrm::ilzrun(){
 }
 
 
-// optimization: This could probably be optimzed with two different register sizes
-// and shit&mask copying with only the end registers being handled with iread/iwrite.  
+// optimization! two things to manage 0) begin/end bits, 1) intra byte allignment  
 inline 
 bitstrm 
 copy(bitstrm begin, bitstrm last, bitstrm result){
@@ -144,8 +145,7 @@ copy(bitstrm begin, bitstrm last, bitstrm result){
   return result;
 }
 
-// optimization: This could probably be optimzed with two different register sizes
-// and shit&mask testing with only the end registers being handled with iread.  
+// optimization! two things to manage 0) begin/end bits, 1) intra byte allignment  
 inline 
 bool 
 equal(bitstrm begin, bitstrm last, bitstrm second){
@@ -161,3 +161,23 @@ equal(bitstrm begin, bitstrm last, bitstrm second){
   return true;
 }
 
+inline ureg
+bitstrm::iread_rle(unsigned max_run_addr_bits /*= c_register_bit_addr_sz*/){
+  ureg mbits = iread_ureg(max_run_addr_bits);
+  ureg base = (1 << mbits) - 1;
+  return iread_ureg(mbits) + base;
+}
+
+inline void
+bitstrm::iwrite_rle(ureg value, unsigned max_run_length_bits /*= c_register_bit_addr_sz*/){
+  ureg bits = min_bits(value + 1) - 1;
+  ureg base = (1 << bits) -1;
+  iwrite(max_run_length_bits, bits);
+  iwrite(bits, value - base);
+}
+
+/*static*/
+inline ureg bitstrm:: write_rle_bsize(ureg value, unsigned max_run_length_bits /*= c_register_bit_addr_sz*/){
+  ureg bits = min_bits(value + 1) - 1;
+  return bits + max_run_length_bits;
+}

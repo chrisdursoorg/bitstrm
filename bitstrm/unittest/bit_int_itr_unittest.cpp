@@ -15,6 +15,7 @@ using namespace boost::unit_test;
 using namespace bitint;
 using namespace std;
 
+
 BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
 {
   // initializing arrays
@@ -34,17 +35,129 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
 
   bit_int_itr<13,reg> bc(p2);
   bit_int_itr<13,reg> be(pe);
-  BOOST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
+  BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
   for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
-  BOOST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
+  BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
   BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
   BOOST_CHECK(buf.back() == sentry  && buf2.back() == sentry);
-  BOOST_MESSAGE("lots of different ways to be equal");
+  BOOST_TEST_MESSAGE("lots of different ways to be equal");
   BOOST_CHECK_MESSAGE(equal(buf.begin(), buf.end(), buf2.begin()), "the memory should be equal");
   BOOST_CHECK_MESSAGE(equal(p2, pe, bitstrm(&buf2.front()+1)), "the bitstrms should be equal");
   BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "buf should return the original data");
 }
+
+BOOST_AUTO_TEST_CASE(boost_style_itr)
+{
+  bitstrm any(0);
+  const int arbitrary_size = 4;
+  typedef boost_facade_style_itr<ureg, arbitrary_size> test_itr;
+  test_itr begin(any);
+  test_itr empty_end(any);
+  test_itr two_end(any + arbitrary_size*2 );
+  
+  // address checking
+  BOOST_CHECK( begin == empty_end);
+  BOOST_CHECK( begin < two_end );
+  BOOST_CHECK( begin + 1 < two_end );
+  BOOST_CHECK( begin + 2 == two_end );
+  BOOST_CHECK( begin != two_end );
+  BOOST_CHECK( two_end - begin == 2);
+  test_itr t = begin  + 1;
+  BOOST_CHECK( --t == begin);
+  BOOST_CHECK( t + 2 == two_end );
+  BOOST_CHECK( t     == begin);
+  BOOST_CHECK( t++   == begin);
+  BOOST_CHECK( --t   == begin);
+  BOOST_CHECK( t++   == begin);
+  BOOST_CHECK( ++t   == two_end);
+
+  // assignments to some space on the stack
+  fbitstrm buf(arbitrary_size*5);
+  any = buf;
+  begin   = test_itr(any);
+  test_itr cur(begin);
+  test_itr end(any + arbitrary_size*5);
+  for(int i = 0; cur != end; ++cur, ++i){
+    *cur = i;
+    BOOST_CHECK(cur - begin == i);
+  }
+  
+  // read it
+  cur = begin;
+  for(unsigned i = 0; cur != end; ++cur, ++i)
+    BOOST_CHECK(*cur == i);
+  
+}
+#if 0
+BOOST_AUTO_TEST_CASE( store_values_two_different_ways_boost_style )
+{
+  // initializing arrays
+  int initValues[] = {1,2,3,4,4,5,6,7,7,7,7};
+  typedef  std::vector<int> containerType;
+  containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
+
+  const unsigned bitSz = 4;
+  typedef boost_facade_style_itr<ureg, bitSz> test_itr;
+
+  BOOST_CHECK(min_bits(container.begin(), container.end()) <= bitSz);
+  std::vector<char> buf(bitstrm::chars(bitSz * container.size()) + 2);
+  const char sentry = 42;       // set "magic number" to see that neither front() or back() is overwritten
+  buf.front() = sentry;
+  buf.back() = sentry;
+  std::vector<char> buf2(buf);
+  bitstrm p((&buf.front()+1));            // bitstream starts after "magic number"
+  bitstrm p2(&buf2.front()+1);
+  bitstrm pe(p2 + container.size()*bitSz); // and continues until "magic number"
+
+  test_itr bc(p2);
+  test_itr be(pe);
+  BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
+  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
+  BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
+  BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
+  BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
+  BOOST_CHECK(buf.back() == sentry  && buf2.back() == sentry);
+  BOOST_TEST_MESSAGE("lots of different ways to be equal");
+  BOOST_CHECK_MESSAGE(equal(buf.begin(), buf.end(), buf2.begin()), "the memory should be equal");
+  BOOST_CHECK_MESSAGE(equal(p2, pe, bitstrm(&buf2.front()+1)), "the bitstrms should be equal");
+  BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "buf should return the original data");
+}
+
+BOOST_AUTO_TEST_CASE( store_values_two_different_with_dynamic_bsize_ways_boost_style )
+{
+  // initializing arrays
+  int initValues[] = {1,2,3,4,4,5,6,7,7,7,7};
+  typedef  std::vector<int> containerType;
+  containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
+
+  unsigned bitSz = 4;
+  typedef boost_facade_style_itr<ureg> test_itr;
+
+  BOOST_CHECK(min_bits(container.begin(), container.end()) <= bitSz);
+  std::vector<char> buf(bitstrm::chars(bitSz * container.size()) + 2);
+  const char sentry = 42;       // set "magic number" to see that neither front() or back() is overwritten
+  buf.front() = sentry;
+  buf.back() = sentry;
+  std::vector<char> buf2(buf);
+  bitstrm p((&buf.front()+1));            // bitstream starts after "magic number"
+  bitstrm p2(&buf2.front()+1);
+  bitstrm pe(p2 + container.size()*bitSz); // and continues until "magic number"
+
+  test_itr bc(p2, bitSz*1);
+  test_itr be(pe, bitSz*1);
+  BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
+  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
+  BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
+  BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
+  BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
+  BOOST_CHECK(buf.back() == sentry  && buf2.back() == sentry);
+  BOOST_TEST_MESSAGE("lots of different ways to be equal");
+  BOOST_CHECK_MESSAGE(equal(buf.begin(), buf.end(), buf2.begin()), "the memory should be equal");
+  BOOST_CHECK_MESSAGE(equal(p2, pe, bitstrm(&buf2.front()+1)), "the bitstrms should be equal");
+  BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "buf should return the original data");
+}
+
 
 BOOST_AUTO_TEST_CASE( sort_values )
 {
@@ -109,16 +222,15 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
   bit_int_itr<13,reg> bc(p0);
   bit_int_itr<13,reg> be(pe);
 
-  BOOST_CHECK(bc[0] == 1);
+  BOOST_CHECK(*bc == 1);
   BOOST_CHECK(*(bc+5) == 5); 
   BOOST_CHECK((*(bc+5) = 32) == 32);
-  BOOST_CHECK(bc[5] == 32);
+  BOOST_CHECK(*(bc + 5) == 32);
   BOOST_CHECK(*(++bc) == 2);
   BOOST_CHECK(*(--bc) == 1);
   BOOST_CHECK(*(bc++) == 1);
   BOOST_CHECK(*(bc--) == 2);
   BOOST_CHECK(*bc == 1);
-  
 
   BOOST_CHECK(*(be-2) == 323);
   BOOST_CHECK(*(be-1) == 3223);
@@ -153,7 +265,7 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
 BOOST_AUTO_TEST_CASE(sort_10_bit_unsigned)
 {
   const size_t testSize = 512*1024; 
-  BOOST_MESSAGE( "ureg v 10 bits sort with " << testSize << " elements");
+  BOOST_TEST_MESSAGE( "ureg v 10 bits sort with " << testSize << " elements");
   vector<ureg> testSet(testSize);  
   vector<ureg>::iterator c(testSet.begin());
   vector<ureg>::iterator e(testSet.end());
@@ -169,10 +281,10 @@ BOOST_AUTO_TEST_CASE(sort_10_bit_unsigned)
   bit_int_itr<10,ureg> be(bc);
   bc = b0;
         
-  BOOST_MESSAGE("sort ureg");
+  BOOST_TEST_MESSAGE("sort ureg");
   sort(testSet.begin(), testSet.end());
 
-  BOOST_MESSAGE("sort (10 bit unsigned) ");
+  BOOST_TEST_MESSAGE("sort (10 bit unsigned) ");
     sort(bc, be);
     
   BOOST_CHECK(equal(testSet.begin(), testSet.end(), bc));
@@ -182,7 +294,7 @@ BOOST_AUTO_TEST_CASE(sort_10_bit_unsigned)
 BOOST_AUTO_TEST_CASE(sort_10_bit_signed)
 {
   const size_t testSize = 512*1024; 
-  BOOST_MESSAGE( "reg (signed) v 10 bits sort with " << testSize << " elements");
+  BOOST_TEST_MESSAGE( "reg (signed) v 10 bits sort with " << testSize << " elements");
   vector<reg> testSet(testSize);  
   vector<reg>::iterator c(testSet.begin());
   vector<reg>::iterator e(testSet.end());
@@ -204,11 +316,13 @@ BOOST_AUTO_TEST_CASE(sort_10_bit_signed)
   bit_int_itr<10,reg> be(bc);
   bc = b0;
         
-  BOOST_MESSAGE("sort reg");
+  BOOST_TEST_MESSAGE("sort reg");
   sort(testSet.begin(), testSet.end());
 
-  BOOST_MESSAGE("sort (10 bit unsigned) ");
+  BOOST_TEST_MESSAGE("sort (10 bit unsigned) ");
   sort(bc, be);
     
   BOOST_CHECK(equal(testSet.begin(), testSet.end(), bc));
 }
+
+#endif

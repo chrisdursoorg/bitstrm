@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <ctime>
-
 #include <vector>
 
 #include "bitstrm/reg.hpp"

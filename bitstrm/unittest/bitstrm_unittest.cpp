@@ -13,11 +13,34 @@ using namespace boost::unit_test;
 using namespace bitint;
 using namespace std;
 
+// print_human_bits
+//
+// formats bits as human readable string
+template<typename NUMERIC_TYPE>
+std::ostream& print_human_bits(std::ostream& out, NUMERIC_TYPE bits){
+  unsigned long long  bytes = bits/8;
+
+  if(bytes < 2){
+    out << bits << " bits";
+  } else if(bytes < 1024){
+    unsigned whole_bytes = bits/8;
+    out << whole_bytes << " bytes " << (bits - (whole_bytes*8)) << " bits";
+  } else if(bytes < 1024*1024){
+    out << double(bits) / (8*1024) << " kbytes";
+  } else if(bytes < 1024*1024*1024){
+    out << double(bits) / (8*1024*1024) << " mbytes";
+  } else {
+    out << double(bits)/(double(8)*1024*1024*1024) << " gbytes";
+  }
+    
+  return out;
+}
+
+
 
 BOOST_AUTO_TEST_CASE(min_size_write_and_restore)
 {
-
-  BOOST_MESSAGE("test min_bits() with bitstrms");
+  BOOST_TEST_MESSAGE("test min_bits() with bitstrms");
   vector<char> buf(8);
 
   for(int i = 1024*1024; i > -1024*2024; --i){
@@ -168,22 +191,25 @@ BOOST_AUTO_TEST_CASE(bitstrm_read_write_arbitrary_depths){
 }
 
 BOOST_AUTO_TEST_CASE(ilzrun){
-    vector<char> buf(101);
-    const char sentry = 42;
-    buf.back() = sentry;
+  ureg max_count = 11;
+  ureg bits_for_test   = (max_count + 1)*(max_count + 2)/2;
+  ureg magic           = 42;
+  ureg bits_for_sentry = (min_bits(magic));
+  fbitstrm buf( bits_for_test + bits_for_sentry);
 
-    bitstrm p(&buf.front());
-    bitstrm po(p);
+  bitstrm po(buf);
 
-    for(int i = 11; i > 0 ; --i){
-      p.iwrite(i,1);  // write i-1 leading zeros
-    }
-
-    p = po;
-    for( int v = 10; v != -1; --v){
-      BOOST_CHECK( v ==  (int)(p.ilzrun()));
-    }
-    BOOST_CHECK(buf.back() == sentry);
+  for(int i = max_count + 1; i > 0 ; --i)
+    buf.iwrite(i,1);  // write i-1 leading zeros
+  buf.iwrite(bits_for_sentry, magic);
+    
+  for( int v = max_count; v != -1; --v){
+    int run = po.ilzrun();
+    BOOST_TEST_MESSAGE("any ... " << run);
+    BOOST_CHECK_MESSAGE( v == run, "v: " << v << " run: " << run);
+  }
+  
+  BOOST_CHECK(po.iread_ureg(bits_for_sentry) == magic);
 }
 
 
@@ -261,5 +287,68 @@ BOOST_AUTO_TEST_CASE(bitstrm_equal){
     BOOST_CHECK(!equal(po + i, p, ro + i));
     int varies =   i*i % 11;
     i += varies ? varies : 1;
+  }
+}
+
+BOOST_AUTO_TEST_CASE(read_write_rle){
+  constexpr unsigned  high_value = 31;
+  fbitstrm buf(high_value*(c_register_bit_addr_sz + min_bits(high_value)));
+  bitstrm  beg = buf;
+  for(unsigned i = 0; i < high_value; ++i ){
+    buf.iwrite_rle(i);
+  }
+
+  stringstream str;
+  str << "Stored: " << high_value << " consecutive values in ";
+  print_human_bits(str, ureg(buf - beg)) << " ";
+  print_human_bits(str, double(buf - beg)/high_value) << " per value ";
+  BOOST_TEST_MESSAGE(str.str());
+
+  for(unsigned i = 0; i < high_value; ++i ){
+    BOOST_CHECK(beg.iread_rle() == i);
+  }
+  
+}
+
+
+BOOST_AUTO_TEST_CASE(read_write_rle_with_tighter_addr){
+  constexpr unsigned  high_value = 31;
+  unsigned max_address = min_bits(high_value);
+  fbitstrm buf(high_value*(max_address + min_bits(high_value)));
+  bitstrm beg = buf;
+  for(unsigned i = 0; i < high_value; ++i ){
+    buf.iwrite_rle(i, max_address);
+  }
+
+  stringstream str;
+  str << "Stored: " << high_value << " consecutive values in ";
+  print_human_bits(str, ureg(buf - beg)) << " ";
+  print_human_bits(str, double(buf - beg)/high_value) << " per value ";
+  BOOST_TEST_MESSAGE(str.str());;
+
+  for(unsigned i = 0; i < high_value; ++i ){
+    BOOST_CHECK(beg.iread_rle(max_address) == i);
+  }
+}
+
+
+BOOST_AUTO_TEST_CASE(read_write_rle_bigger){
+  constexpr unsigned  high_value = 123456;
+  unsigned max_address = min_bits(high_value);
+  fbitstrm buf(high_value*(max_address + min_bits(high_value)));
+  bitstrm  beg = buf;
+
+  for(unsigned i = 0; i < high_value; ++i ){
+    buf.iwrite_rle(i, max_address);
+  }
+
+  stringstream str;
+  str << "Stored: " << high_value << " consecutive values in ";
+  print_human_bits(str, ureg(buf - beg)) << " ";
+  print_human_bits(str, double(buf - beg)/high_value) << " per value ";
+  BOOST_TEST_MESSAGE(str.str());
+
+  for(unsigned i = 0; i < high_value; ++i ){
+    BOOST_CHECK(beg.iread_rle(max_address) == i);
   }
 }

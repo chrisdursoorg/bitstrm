@@ -29,8 +29,6 @@ template<typename _T> inline ureg bit_sign_adj_check(_T v, boost::true_type /*me
 }
 template<typename _T> inline ureg bit_sign_adj_check(_T v) { return bit_sign_adj_check(v, boost::is_signed<_T>()); }
 
-
-
 template<typename V>
 inline bool check_minmax(const V& a, const V& b){
 
@@ -92,7 +90,7 @@ BOOST_AUTO_TEST_CASE(bit_sign_adj_test_static)
 BOOST_AUTO_TEST_CASE(bit_sign_adj_application_defect)
 {
 
-  BOOST_MESSAGE("The following sequence with the obviously incorrect result of min_bit()-> 5 revealed that I had mistakenly se the type 'acc' in my algorithm to reg!" );
+  BOOST_TEST_MESSAGE("The following sequence with the obviously incorrect result of min_bit()-> 5 revealed that I had mistakenly se the type 'acc' in my algorithm to reg!" );
   const std::array<reg, 16>  data = {{1, 0, 3, 1, 0, 4, 2, 4, 2, 2, 1, 1, 1, 3, 2, 0}};  
 
   ureg acc(0);
@@ -100,7 +98,7 @@ BOOST_AUTO_TEST_CASE(bit_sign_adj_application_defect)
   for_each(data.begin(), data.end(), [&acc, &mb](const reg v){
       acc |= bit_sign_adj(v); 
       mb =  std::max(mb, min_bits(v));
-      // BOOST_MESSAGE( "v: " << v << " bsa: " << bit_sign_adj(v) << " min bits bsa: " << min_bits(bit_sign_adj(v)) << " min_bits(v): " << min_bits(v));
+      // BOOST_TEST_MESSAGE( "v: " << v << " bsa: " << bit_sign_adj(v) << " min bits bsa: " << min_bits(bit_sign_adj(v)) << " min_bits(v): " << min_bits(v));
       BOOST_CHECK(min_bits(bit_sign_adj(v)) == min_bits(v));
     }
     );
@@ -203,5 +201,34 @@ BOOST_AUTO_TEST_CASE(min_bits_64_million_slower_way){
   BOOST_CHECK(totalSize == 1024*128*512*3);
 }
 
+BOOST_AUTO_TEST_CASE(bit_numeric_limits){
+  
+  BOOST_TEST_MESSAGE("some magnitudes turned into minimum and maximum numbers");
+  BOOST_CHECK(numeric_limits_signed_min  (0) == 0);
+  BOOST_CHECK(numeric_limits_signed_max  (0) == 0);
+  BOOST_CHECK(numeric_limits_unsigned_min(0) == 0);
+  BOOST_CHECK(numeric_limits_unsigned_max(0) == 0);  
 
+  BOOST_CHECK(numeric_limits_signed_min  (1) == -1);
+  BOOST_CHECK(numeric_limits_signed_max  (1) ==  0);
+  BOOST_CHECK(numeric_limits_unsigned_min(1) ==  0);
+  BOOST_CHECK(numeric_limits_unsigned_max(1) ==  1);  
+
+  BOOST_CHECK(numeric_limits_signed_min  (2) == -2);
+  BOOST_CHECK(numeric_limits_signed_max  (2) ==  1);
+  BOOST_CHECK(numeric_limits_unsigned_min(2) ==  0);
+  BOOST_CHECK(numeric_limits_unsigned_max(2) ==  3);  
+  
+
+  BOOST_CHECK(numeric_limits_signed_min  (3) == -4);
+  BOOST_CHECK(numeric_limits_signed_max  (3) ==  3);
+  BOOST_CHECK(numeric_limits_unsigned_min(3) ==  0);
+  BOOST_CHECK(numeric_limits_unsigned_max(3) ==  7);  
+  
+  
+  BOOST_CHECK(numeric_limits_signed_min  (63) == -4611686018427387904);
+  BOOST_CHECK(numeric_limits_signed_max  (63) ==  4611686018427387903);
+  BOOST_CHECK(numeric_limits_unsigned_min(63) == 0);
+  BOOST_CHECK(numeric_limits_unsigned_max(63) == 9223372036854775807);  
+}
 

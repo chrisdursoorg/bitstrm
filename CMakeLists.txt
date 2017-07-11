@@ -8,7 +8,6 @@ include_directories("${CMAKE_SOURCE_DIR}")
 
 add_executable(${PROJECT_NAME} ${SRCS})
 
-
 # CMAKE_BUILD_TYPE=Release,Debug
 
 enable_testing()
@@ -26,9 +25,7 @@ ELSEIF(CMAKE_BUILD_TYPE MATCHES Release)
 ELSE()
 ENDIF()
 
-set(CMAKE_CXX_FLAGS_RELEASE, "${CMAKE_CXX_FLAGS_RELEASE} -04")
-
-add_definitions("-std=c++11 -Wall -Wno-c++11-extensions -Weffc++ -pedantic -O3 -Wall -Wextra")
+add_definitions("-std=c++11 -Wall -Wno-c++11-extensions -Weffc++ -pedantic -Wall -Wextra")
 
 set (ROOT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}")
 

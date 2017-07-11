@@ -1,5 +1,5 @@
 # About bitstrm 
-Library supporting streams of arbitrary signed and unsigned integers in contagious blocks
+Library supporting streams of arbitrary signed and unsigned integers in contagious blocks as part of the [Eureka Data System Project](http://www.eurekadata.net)
 
 Bitstrm is a C++ template library to write strings of bits of arbitrary length representing either signed or unsigned values as a precursor to general compression or packed array work.  In addition to fixed sized read/write operations for signed unsigned values a run length leading zeros count operator is included.
 

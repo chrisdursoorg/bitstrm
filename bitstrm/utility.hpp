@@ -16,38 +16,42 @@
 #include <algorithm>
 #include <iostream>
 #include <ctime>
-
+#include <chrono>
 
 #include "bitstrm/reg.hpp"
 
 
-namespace bitint {
+namespace  bitint { 
 
 
 #if 0  
-    // the following is kept here for reference only, as the testing with pentium appears to operate as though LT operation is equivalent to branch
+  // the following is kept here for reference only, as the testing
+  // with pentium appears to operate as though LT operation is
+  // equivalent to branch
     
-    // max/min todo for primative types use branch free version  http://graphics.stanford.edu/~seander/bithacks.html
-    // foreach integer types, else revert to std:: implementation 
-    //
-    // Chose not to do this with templates because, bit approach returns value not reference.  Could still do this with specialization of return type,
-    // but plain ol macros seep pretty clean approach
-    //
-    // NOTE: INT_MIN <= x - y <= INT_MAX, for non std approaches
-    // 
+  // max/min todo for primative types use branch free version
+  // http://graphics.stanford.edu/~seander/bithacks.html foreach
+  // integer types, else revert to std:: implementation
+  //
+  // Chose not to do this with templates because, bit approach returns
+  // value not reference.  Could still do this with specialization of
+  // return type, but plain ol macros seep pretty clean approach
+  //
+  // NOTE: INT_MIN <= x - y <= INT_MAX, for non std approaches
+  // 
 
     
-#define BITLIB_MINMAX_IMPL(TYPE)					 \
-    inline TYPE min(TYPE x, TYPE y){ return y ^ ((x ^ y) & -(x < y)); }; \
-    inline TYPE max(TYPE x, TYPE y){ return x ^ ((x ^ y) & -(x < y)); }; \
-    inline std::pair<TYPE,TYPE> minmax(TYPE x, TYPE y) {  TYPE i =  ((x ^ y) & -(x < y)); return std::make_pair(y^i, x^i); }
+#define BITLIB_MINMAX_IMPL(TYPE)					\
+  inline TYPE min(TYPE x, TYPE y){ return y ^ ((x ^ y) & -(x < y)); };	\
+  inline TYPE max(TYPE x, TYPE y){ return x ^ ((x ^ y) & -(x < y)); };	\
+  inline std::pair<TYPE,TYPE> minmax(TYPE x, TYPE y) {  TYPE i =  ((x ^ y) & -(x < y)); return std::make_pair(y^i, x^i); }
 
 
- // THIS WORKS ONLY WITH SIGNED, AND THEN PERFORMANCE IS NOT WORKING AS EXPECTED!
-#define BITLIB_MINMAX_IMPL(TYPE)   \
-    inline TYPE min( TYPE x, TYPE y) { return y + ((x - y) & (((x - y) >> (sizeof(TYPE) * CHAR_BIT - 1)))); } \
-    inline TYPE max( TYPE x, TYPE y) { return x - ((x - y) & (((x - y) >> (sizeof(TYPE) * CHAR_BIT - 1)))); } \
-    inline std::pair<TYPE,TYPE> minmax(TYPE x, TYPE y) {  TYPE i =  ((x - y) & ((x - y) >> (sizeof(TYPE) * CHAR_BIT - 1))); return std::make_pair(y+i, x-i); }
+  // THIS WORKS ONLY WITH SIGNED, AND THEN PERFORMANCE IS NOT WORKING AS EXPECTED!
+#define BITLIB_MINMAX_IMPL(TYPE)					\
+  inline TYPE min( TYPE x, TYPE y) { return y + ((x - y) & (((x - y) >> (sizeof(TYPE) * CHAR_BIT - 1)))); } \
+  inline TYPE max( TYPE x, TYPE y) { return x - ((x - y) & (((x - y) >> (sizeof(TYPE) * CHAR_BIT - 1)))); } \
+  inline std::pair<TYPE,TYPE> minmax(TYPE x, TYPE y) {  TYPE i =  ((x - y) & ((x - y) >> (sizeof(TYPE) * CHAR_BIT - 1))); return std::make_pair(y+i, x-i); }
     
     BITLIB_MINMAX_IMPL(bool)
     BITLIB_MINMAX_IMPL(char)
@@ -63,7 +67,7 @@ namespace bitint {
 
 #endif 
     
-    // Optomism I guess, perhaps I will develop or discover a better min/max/minmax or perhaps the pentium die will change
+    // Optimism I guess, perhaps I will develop or discover a better min/max/minmax or perhaps the pentium die will change
     // but for now std implementation 
     
     template<typename ANYTYPE> 
@@ -73,21 +77,31 @@ namespace bitint {
     template<typename ANYTYPE> 
     inline std::pair<const ANYTYPE&, const ANYTYPE&> minmax(const ANYTYPE& a, const ANYTYPE& b){ return std::minmax(a,b); }
   
+    // numeric_limits_signed
+    // given bits:{_min, _max} = {-(2^(n-1), 2^(n-1)-1 } 
+    inline reg  numeric_limits_signed_min  (unsigned bits) { return bits ? -( reg(1) << (bits-1))        : 0; } 
+    inline reg  numeric_limits_signed_max  (unsigned bits) { return bits ?  ((reg(1) << (bits-1)) - 1 )  : 0; } 
+    inline ureg numeric_limits_unsigned_min(unsigned     ) { return                                        0; } 
+    inline ureg numeric_limits_unsigned_max(unsigned bits) { return bits ?  ((reg(1) << (bits))   - 1 )  : 0; } 
 
     // abs
     //
     // fast absolute value adapted from 'http://graphics.stanford.edu/~seander/bithacks.html#IntegerAbs'
     // fails (as does std::abs) for MIN_INT due to overflow
     template<typename _T>
-    inline typename std::make_unsigned<_T>::type abs(_T v) { _T const mask = v >> ((sizeof(_T)*CHAR_BIT)-1); return (v+mask)^mask; }; 
+    inline typename std::make_unsigned<_T>::type abs(_T v) { _T const mask = v >> ((sizeof(_T)*CHAR_BIT)-1); return (v+mask)^mask; } 
 
     // bit_sign_adj
     //
-    // min_bits for a container of unsigned integers can be determined with bit-or accumulation and then min_bits of the resulting value
-    // with bit_sign_adj this same trick can be played with signed integers by turning signed positive/negative numbers into same bit size analogs
-    // note that you have to return 0 for input zero, and the function becomes Identity automatically when unsigned type
+    // min_bits for a container of unsigned integers can be determined
+    // with bit-or accumulation and then min_bits of the resulting
+    // value with bit_sign_adj this same trick can be played with
+    // signed integers by turning signed positive/negative numbers
+    // into same bit size analogs note that you have to return 0 for
+    // input zero.  The function is identity with unsigned type.
     //
-    // USAGE  acc = 0; for_each(b,e, [](signed_or_unsigned_type v){ acc |= bit_sign_adj(v); }); min = min_bits(acc);
+    // USAGE acc = 0; for_each(b,e, [](signed_or_unsigned_type v){ acc
+    // |= bit_sign_adj(v); }); min = min_bits(acc);
     // 
     //
     // if IS_SIGNED type is true then shift left any (non zero) value for signed bit space

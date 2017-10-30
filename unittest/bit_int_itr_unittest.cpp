@@ -6,6 +6,7 @@
 #define BOOST_TEST_MODULE "BitIntIter"
 
 #include <boost/test/unit_test.hpp>
+#include "bitstrm/alloced_bref.hpp"
 #include "bitstrm/reg.hpp"
 #include "bitstrm/bref.hpp"
 #include "bitstrm/utility.hpp"
@@ -22,32 +23,35 @@ using namespace std;
 BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
 {
   // initializing arrays
-  typedef  std::vector<int> containerType;
-  int initValues[] = {1,2,3,4,-4,5,6,7,192,323,3223};
-  containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
+  std::vector<int> container{{1,2,3,4,-4,5,6,7,192,323,3223}};
   unsigned bitSz = min_bits(container.begin(),container.end());
   BOOST_CHECK_MESSAGE(bitSz == 13, "for the initValues, 13 bits will hold all values in reg format");
-  std::vector<char> buf(bref::_chars(bitSz*container.size()) + 2);
-  const char sentry = 42;       // set "magic number" to see that neither front() or back() is overwritten
-  buf.front() = sentry;
-  buf.back() = sentry;
-  std::vector<char> buf2(buf);
-  bref p((&buf.front()+1));             // bitstream starts after "magic number"
-  bref p2(&buf2.front()+1);
-  bref pe(p2 + container.size()*bitSz); // and continues until "magic number"
+  unsigned numbers_bsize = bitSz*container.size();
+  const char sentry = 42;                   // set "magic number" to see that neither front nor back is overwritten
+  alloced_bref buf (numbers_bsize + 2*8);
+  alloced_bref buf2(numbers_bsize + 2*8);
+  buf .iwrite(8, sentry);                   // mark the ends for later;
+  buf2.iwrite(8, sentry);
+  (buf  +  numbers_bsize).write(8, sentry);
+  (buf2 +  numbers_bsize).write(8, sentry);
+  
 
-  bit_int_itr<13,reg> bc(p2);
-  bit_int_itr<13,reg> be(pe);
+  bit_int_itr<13,reg> bc(buf2);
+  bit_int_itr<13,reg> be(buf2+numbers_bsize);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
+  for_each(container.begin(), container.end(), [bitSz,&buf](int v) { buf.iwrite(bitSz, v); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
-  BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry  && buf2.back() == sentry);
+  buf .reset();
+  buf2.reset();
+  BOOST_CHECK(buf.iread_reg(8) == sentry && buf2.iread_reg(8) == sentry);
+  BOOST_CHECK((buf  + numbers_bsize).iread_reg(8) == sentry);
+  BOOST_CHECK((buf2 + numbers_bsize).iread_reg(8) == sentry);
   BOOST_TEST_MESSAGE("lots of different ways to be equal");
-  BOOST_CHECK_MESSAGE(equal(buf.begin(), buf.end(), buf2.begin()), "the memory should be equal");
-  BOOST_CHECK_MESSAGE(equal(p2, pe, bref(&buf2.front()+1)), "the bitstrms should be equal");
-  BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "buf should return the original data");
+  buf .reset();
+  buf2.reset();
+  BOOST_CHECK_MESSAGE(equal(buf, buf + 2*8 + numbers_bsize, buf2), "the bitstrms should be equal");
+  BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "the itr should return the original sequence");
 }
 
 BOOST_AUTO_TEST_CASE(boost_style_itr)
@@ -165,28 +169,32 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_with_dynamic_bsize_ways_boost_s
 BOOST_AUTO_TEST_CASE( sort_values )
 {
   // initializing arrays
-  typedef  std::vector<int> containerType;
-  int initValues[] = {1,2,3,4,-4,5,6,7,192,323,3223};
-  containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
+  std::vector<int> container{{1,2,3,4,-4,5,6,7,192,323,3223}};
   unsigned bitSz = min_bits(container.begin(),container.end());
-  BOOST_CHECK_MESSAGE(bitSz == 13, "for the initValues, 13 bits will hold all values in reg format");
-  std::vector<char> buf(bref::_chars(bitSz*container.size()) + 2);
-  const char sentry = 42;       // set "magic number" to see that neither front() or back() is overwritten
-  buf.front() = sentry;
-  buf.back() = sentry;
-  bref p((&buf.front()+1));            // bitstream starts after "magic number"
-  bref p0(p);
-  bref pe(p + container.size()*bitSz); // and continues until "magic number"
+  BOOST_CHECK_MESSAGE(bitSz == 13, "for the container, 13 bits will hold all values in reg format");
+  unsigned numbers_bsize = bitSz*container.size();
+  alloced_bref buf(numbers_bsize + 2*8 + 64); // keep some extra space for 8 bit padding
+  const char sentry = 42;                // "magic number" to see that front and back are preserved
+  buf.write(8,sentry);
+  (buf + 8 + numbers_bsize).write(8, sentry);
+  bref p(buf + 8); 
+  bref p0(p);                            // bitstream to start after "magic number"
+  bref pe(p0 + numbers_bsize);           // and continues until back "magic number"
 
   bit_int_itr<13,reg> bc(p0);
   bit_int_itr<13,reg> be(pe);
-
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
-  cout << "pre-sort: "; for_each(bc, be, [](reg v ){ cout << v << ", ";});   cout << endl;
+  
+  for_each(container.begin(), container.end(), [bitSz,&p](int value) { p.iwrite(bitSz, value); });
+  stringstream str;
+  str << "pre-sort: "; for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
+  BOOST_TEST_MESSAGE(str.str());
+  BOOST_CHECK(equal(container.begin(),container.end(), bc));
   sort(bc, be);
-  BOOST_CHECK(buf.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry);
-  cout << "pst-sort: "; for_each(bc, be, [](reg v ){ cout << v << ", ";});   cout << endl;
+  BOOST_CHECK(buf.read_reg(8) == sentry);
+  BOOST_CHECK(pe .read_reg(8) == sentry);
+  str.str("");
+  str << "pst-sort: "; for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
+  BOOST_TEST_MESSAGE(str.str());
   sort(container.begin(), container.end());
   BOOST_CHECK(equal(container.begin(),container.end(), bc));
 }
@@ -248,18 +256,25 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
   bc[5] = 5; 
 
   BOOST_CHECK(equal(container.begin(),container.end(), bc));
-
-  cout << "pre-sort: "; for_each(bc, be, [](reg v ){ cout << v << ", ";});   cout << endl;
+  stringstream str;
+  str << "pre-swap: ";  for_each(bc, be, [&str](reg v ){ str << v << ", ";});  str << endl;
+  BOOST_TEST_MESSAGE(str.str());
   swap(*(bc+0), *(bc+4));
-  cout << "swap 0,4: ";  for_each(bc, be, [](reg v ){ cout << v << ", ";});   cout << endl;
+  str.str("");
+  str << "swap 0,4: ";  for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
+  BOOST_TEST_MESSAGE(str.str());
   swap(*(bc+0), *(bc+4));
-  cout << "swap 0,4: ";  for_each(bc, be, [](reg v ){ cout << v << ", ";});   cout << endl;
+  str.str("");
+  str << "swap 0,4: ";  for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
+  BOOST_TEST_MESSAGE(str.str());
   BOOST_CHECK(buf.front() == sentry);
   BOOST_CHECK(buf.back() == sentry);
   sort(bc, be);
   BOOST_CHECK(buf.front() == sentry);
   BOOST_CHECK(buf.back() == sentry);
-  cout << "pst-sort: "; for_each(bc, be, [](reg v ){ cout << v << ", ";});   cout << endl;
+  str.str("");
+  str << "pst-sort: ";  for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
+  BOOST_TEST_MESSAGE(str.str());
   sort(container.begin(), container.end());
   BOOST_CHECK(equal(container.begin(),container.end(), bc));
 }

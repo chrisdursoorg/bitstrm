@@ -64,16 +64,14 @@ namespace bitstrm {
     }
 
     bool
-    operator==(const _bit_int_reference& __x) const
-    { return p_ == __x.p_; }
-
-    bool
     operator<(const _bit_int_reference& __x) const
-    { return p_ < __x.p_; }
+    { return read() < __x.read(); }
 
+    
     void print(std::ostream& out)const{
       p_.print(out); out << " " << read();
     }
+
 
   private:
     bref p_;  

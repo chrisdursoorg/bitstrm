@@ -1,10 +1,11 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.2.2)
 
-set(TEST 
-	 reg_unittest.cpp 
-	 utility_unittest.cpp 
-	 bitstrm_unittest.cpp 
-	 bit_int_itr_unittest.cpp
+set(TEST                       
+        bref_unittest.cpp
+	reg_unittest.cpp
+	utility_unittest.cpp   
+        bitstrm_unittest.cpp 
+        bit_int_itr_unittest.cpp
 )
 
 find_package(Boost 1.4 COMPONENTS unit_test_framework)
@@ -22,8 +23,8 @@ foreach(TEST_SRC ${TEST})
 
         target_link_libraries(${TEST_NAME} ${Boost_LIBRARIES})
 
-        add_test( ${TEST_NAME} 
-		   COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}
-                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        add_test( NAME ${TEST_NAME} 
+		  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
            	 )
 endforeach(TEST_SRC)

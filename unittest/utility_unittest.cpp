@@ -11,15 +11,19 @@
 #include <array>
 
 using namespace boost::unit_test;
-using namespace bitint;
+using namespace bitstrm;
 using namespace std;
 
+// This is another, albeit less performant, way to do bit_sign_adj
+template<typename _T>
+ureg
+bit_sign_adj_check(_T v, boost::false_type)  {
+  return v;
+}
 
-
-// This should be another, albeit less performant, way to do bit_sign_adj
-template<typename _T> inline ureg bit_sign_adj_check(_T v, boost::false_type)  { return v;}
-
-template<typename _T> inline ureg bit_sign_adj_check(_T v, boost::true_type /*meansIsReallySigned*/){
+template<typename _T>
+ureg
+bit_sign_adj_check(_T v, boost::true_type /*meansIsReallySigned*/){
   if( v < -1) 
     return ~v << 1;
   else if( v > -1)
@@ -27,51 +31,12 @@ template<typename _T> inline ureg bit_sign_adj_check(_T v, boost::true_type /*me
   else
     return 1;
 }
-template<typename _T> inline ureg bit_sign_adj_check(_T v) { return bit_sign_adj_check(v, boost::is_signed<_T>()); }
 
-template<typename V>
-inline bool check_minmax(const V& a, const V& b){
-
-  auto lhs = std::minmax(a, b);
-  auto rhs = bitint::minmax(a, b);
-  return lhs.first == rhs.first && lhs.second == rhs.second;
+template<typename _T>
+ureg
+bit_sign_adj_check(_T v) {
+  return bit_sign_adj_check(v, boost::is_signed<_T>());
 }
-
-
-BOOST_AUTO_TEST_CASE(bitlib_min_max)
-{
-
-  const char one = 1;
-  const char two = 2;
-
-  BOOST_CHECK( std::min(one,two) == bitint::min(one, two));
-  BOOST_CHECK( std::max(one,two) == bitint::max(one, two));
-  BOOST_CHECK(check_minmax(one,two));
-
-  const int neg_one = -1; 
-  const int neg_two = -2;
-
-  BOOST_CHECK( std::min(neg_one, neg_two) == bitint::min(neg_one, neg_two));
-  BOOST_CHECK( std::max(neg_one, neg_two) == bitint::max(neg_one, neg_two));
-  BOOST_CHECK(check_minmax(neg_one, neg_two));
-
-
-  string hello("hello");
-  string world("world");
-  
-  // for non primative integer, should just revert to std:: implementations
-  BOOST_CHECK( std::min(hello, world) ==  bitint::min(hello, world));
-  BOOST_CHECK( std::max(hello, world) ==  bitint::max(hello, world));
-  BOOST_CHECK(check_minmax(hello,world));
-
-
-  const bool trueValue  = true;
-  const bool falseValue = false;
-  BOOST_CHECK( std::min(trueValue, falseValue) == bitint::min(trueValue, falseValue));
-  BOOST_CHECK( std::max(trueValue, falseValue) == bitint::max(trueValue, falseValue));
-  BOOST_CHECK(check_minmax(trueValue, falseValue));
-}
-
 
 
 BOOST_AUTO_TEST_CASE(bit_sign_adj_test_static)
@@ -90,7 +55,7 @@ BOOST_AUTO_TEST_CASE(bit_sign_adj_test_static)
 BOOST_AUTO_TEST_CASE(bit_sign_adj_application_defect)
 {
 
-  BOOST_TEST_MESSAGE("The following sequence with the obviously incorrect result of min_bit()-> 5 revealed that I had mistakenly se the type 'acc' in my algorithm to reg!" );
+  BOOST_TEST_MESSAGE("The following sequence revealed an earlier algorithm error" );
   const std::array<reg, 16>  data = {{1, 0, 3, 1, 0, 4, 2, 4, 2, 2, 1, 1, 1, 3, 2, 0}};  
 
   ureg acc(0);
@@ -98,7 +63,6 @@ BOOST_AUTO_TEST_CASE(bit_sign_adj_application_defect)
   for_each(data.begin(), data.end(), [&acc, &mb](const reg v){
       acc |= bit_sign_adj(v); 
       mb =  std::max(mb, min_bits(v));
-      // BOOST_TEST_MESSAGE( "v: " << v << " bsa: " << bit_sign_adj(v) << " min bits bsa: " << min_bits(bit_sign_adj(v)) << " min_bits(v): " << min_bits(v));
       BOOST_CHECK(min_bits(bit_sign_adj(v)) == min_bits(v));
     }
     );
@@ -130,7 +94,7 @@ BOOST_AUTO_TEST_CASE(signextend_3_bit_numbers)
 {
   BOOST_TEST_MESSAGE("check signextend works on small integers");
 
-  for_each(three_bit_signed_numbers, three_bit_signed_numbers_e, [](int v)
+  for_each(three_bit_signed_numbers, std::end(three_bit_signed_numbers), [](int v)
            { 
              int r = signextend<signed int,3>(v & 0x7);
              BOOST_CHECK(v  ==  r); 
@@ -228,7 +192,12 @@ BOOST_AUTO_TEST_CASE(bit_numeric_limits){
   
   BOOST_CHECK(numeric_limits_signed_min  (63) == -4611686018427387904);
   BOOST_CHECK(numeric_limits_signed_max  (63) ==  4611686018427387903);
-  BOOST_CHECK(numeric_limits_unsigned_min(63) == 0);
-  BOOST_CHECK(numeric_limits_unsigned_max(63) == 9223372036854775807);  
+  BOOST_CHECK(numeric_limits_unsigned_min(63) ==  0);
+  BOOST_CHECK(numeric_limits_unsigned_max(63) ==  9223372036854775807);
+
+  BOOST_CHECK(numeric_limits_signed_min  (64) ==  LLONG_MIN);
+  BOOST_CHECK(numeric_limits_signed_max  (64) ==  LLONG_MAX);
+  BOOST_CHECK(numeric_limits_unsigned_min(64) ==  0);
+  BOOST_CHECK(numeric_limits_unsigned_max(64) ==  ULLONG_MAX);
 }
 

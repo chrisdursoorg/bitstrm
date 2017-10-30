@@ -3,12 +3,12 @@
 #include <iostream>
 #include <array>
 #include "bitstrm/utility.hpp"
-#include "bitstrm/bitstrm.hpp"
+#include "bitstrm/alloced_bref.hpp"
 #include <vector>
 #include <cassert>
 
 using namespace std; 
-using namespace bitint;
+using namespace bitstrm;
 
 // should_resize
 //
@@ -68,16 +68,15 @@ int main(int /*argc*/, const char** /*argv*/){
   }
   
   cout << "total_bits: " << total_bits << " bytes: " 
-       << bitstrm::chars(total_bits) << " bits/number: " 
+       << bref::_chars(total_bits) << " bits/number: " 
        << double(total_bits)/data.size() 
-       << " savings: " << (1. - double(bitstrm::chars(total_bits))/(data.size()*sizeof(unsigned long long)))*100. 
+       << " savings: " << (1. - double(bref::_chars(total_bits))/(data.size()*sizeof(unsigned long long)))*100. 
        << "%" << endl;
 
   // second pass through the data, now code
   
-  vector<char> buf(bitstrm::chars(total_bits));
-  bitstrm cur(&buf.front());
-  bitstrm beg = cur;
+  alloced_bref cur(total_bits);
+  bref beg = cur;
   
   cur_bits = 0;
   wasted_bits = 6;
@@ -102,7 +101,7 @@ int main(int /*argc*/, const char** /*argv*/){
   cur_bits = 0;
   wasted_bits = 6;
   first = true;
-  cur = beg;
+  cur.reset();
   bool read_bit_size = true;
   for(auto a : data){
     if(!read_bit_size)

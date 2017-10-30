@@ -1,33 +1,24 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(example)
-
-set(SRCS  example.cpp)
-
-include_directories("${CMAKE_SOURCE_DIR}")
-
-add_executable(${PROJECT_NAME} ${SRCS})
-
-# CMAKE_BUILD_TYPE=Release,Debug
+# CMAKE_BUILD_TYPE=[Release|Debug]
 
 enable_testing()
 
-IF(NOT DEFINED ${CMAKE_BUILD_TYPE})
-       message ("defaulting to Release mode, do you want -DCMAKE_BUILD_TYPE='Debug' ?")       
-ENDIF()
+project(bitstrm)
 
-IF(CMAKE_BUILD_TYPE MATCHES Debug)
-  message("Debug build.")
-  add_definitions("-O0 -g")
-ELSEIF(CMAKE_BUILD_TYPE MATCHES Release)
-  message("Release build.")
-    add_definitions("-O3 -Ofast")	
-ELSE()
-ENDIF()
+################################################################################
+# *this directory should be bitstrm*
+#
+# then this repo can be built, in place as a submodule, or as an independent
+# build with an abritrary path
+#
+# in including '..' files within this project as root, all headers can be
+# prefaced with bitstrm (as #include "bitstrm/header_name.hpp";) and no
+# conflicts will arise 
 
-add_definitions("-std=c++11 -Wall -Wno-c++11-extensions -Weffc++ -pedantic -Wall -Wextra")
+add_definitions("-std=c++11 -Wall -pedantic -Wall -Wextra")
 
-set (ROOT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}")
+set (ROOT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-add_subdirectory(bitstrm)
-add_subdirectory(performance)
+add_subdirectory(unittest)
+add_subdirectory(examples)

@@ -7,7 +7,7 @@
 #include <limits>
 
 using namespace boost::unit_test;
-using namespace bitint;
+using namespace bitstrm;
 using namespace std;
 
 BOOST_AUTO_TEST_CASE( byte_endianness )

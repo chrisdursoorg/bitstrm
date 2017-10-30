@@ -1,4 +1,4 @@
-// main.cpp
+// sort_10_bit.cpp
 //
 
 #include <iostream>
@@ -6,13 +6,16 @@
 #include <vector>
 
 #include "bitstrm/reg.hpp"
-#include "bitstrm/bitstrm.hpp"
+#include "bitstrm/alloced_bref.hpp"
 #include "bitstrm/utility.hpp"
 #include "bitstrm/bit_int_itr.hpp"
+#include "bitstrm/TimeFixture.hpp"
 #include <boost/lexical_cast.hpp>
-using namespace bitint;
+using namespace bitstrm;
 using namespace std;
 
+
+unsigned bitstrm::TimeFixture::s_timer_number = 0;
 
 int main(int /*argc*/ , const char** /*argv*/){
 
@@ -31,9 +34,9 @@ int main(int /*argc*/ , const char** /*argv*/){
   
     cout << "enumeration of 128m data points complete" << endl;
 
-    bitstrm dc(reinterpret_cast<char*>(&*input_128m.begin()));
-    bitstrm sc(reinterpret_cast<char*>(&*(input_128m.begin()+2)));
-    bitstrm se(reinterpret_cast<char*>(&*input_128m.end()));
+    bref dc(reinterpret_cast<char*>(&*input_128m.begin()));
+    bref sc(reinterpret_cast<char*>(&*(input_128m.begin()+2)));
+    bref se(reinterpret_cast<char*>(&*input_128m.end()));
     
     {
       TimeFixture copy_itself("copy itself", exact_quanity);
@@ -79,7 +82,7 @@ int main(int /*argc*/ , const char** /*argv*/){
 	vector<int>::const_iterator b(sampleSpace.begin());
 	vector<int>::const_iterator e(sampleSpace.end());
 	for( ; b != e; ++b){
-	  int v  = bitint::signextend<signed int, bits>(*b & mask);
+	  int v  = bitstrm::signextend<signed int, bits>(*b & mask);
 	  histogram[v + midWayPoint]++;
 	}
       }
@@ -95,7 +98,7 @@ int main(int /*argc*/ , const char** /*argv*/){
     vector<unsigned short>::iterator c16(testSet16.begin());
     const ureg ten_bit_mask((1<<10) -1);
     vector<char> buf((testSize *10 + 7)/8);
-    bit_int_itr<10,ureg>  b0(bitstrm(&buf.front()));
+    bit_int_itr<10,ureg>  b0(bref(&buf.front()));
     bit_int_itr<10,ureg>  bc(b0);
 
     {
@@ -130,7 +133,7 @@ int main(int /*argc*/ , const char** /*argv*/){
     vector<short>::iterator c16(testSet16.begin());
     const reg               ten_bit_mask((1<<10) -1);
     vector<char> buf((testSize *10 + 7)/8);
-    bit_int_itr<10,reg>     b0(bitstrm(&buf.front()));
+    bit_int_itr<10,reg>     b0(bref(&buf.front()));
     bit_int_itr<10,reg>     bc(b0);
     {
       TimeFixture fixture((string("created ") + boost::lexical_cast<string>(testSize) 

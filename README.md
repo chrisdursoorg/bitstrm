@@ -14,9 +14,11 @@ Implemented as a header only library compatible to `-std=c++11`, this code offer
 * adaptable to different hardware, reg is defined as int64_t and it can be easily modified to be your native signed register
 * pointer and iterator _lightweight accessor_ behavior (i.e. can work directly in std algorithms)
 * integrated endian transform for integers to and from byte stream
-* two's compliment implemented, with negative two's complitment "prefix" (as suffix notation necessitates a branch and gives you `+/- 0` )
-* reduction of branch operations
-* simple codec primatives
+* two's compliment fully implemented instead of a `-ve` suffix notation which gives you `+/- 0` and extra branch
+* simple codec primatives 
+   * _run length specified_
+   * _run length prefixed_
+   * _count leading zeros_
 
 ## Architecture
 

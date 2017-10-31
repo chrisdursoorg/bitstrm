@@ -84,7 +84,7 @@ assert(bref(p0).iread_rls(2) == 6 && bref(p2).iread_rls(2) == 3);  // the range 
 assert(bref(p0).iread_rls(1) == 2 && bref(p2).iread_rls(1) == 1);  // the range for 1 bit rls
 // or {0}{1, 2}{3, 4, 5, 6}{7, 8, 9, 10, 11, 12, 13, 14},
 // for ranges of 0, 1, 2, and 3 bits respectively
-
+```
 ### simple bit_int_itr example
 
 ```

@@ -37,75 +37,94 @@
 
 namespace bitstrm {
 
+  // _bit_int_reference
+  //
+  // The "ghost in the machine" for the iterator.  As with
+  // vector<bool>::iterator the underylying non byte alligned bits
+  // cannot be directly addressed in CPU so this proxy object stands
+  // in for them so that you can "write" directly to this object and
+  // it writes via the bref interface.
+  //
+  // The shortcoming of this approach is twofold.  First the dereferenced
+  // type is NOT the underlying storage unit (i.e. a k bit integer).
+  // Second there is overhead with this object that there would not be
+  // with a reference to the underlying storage unit.
+  
   template<typename SIGN_UNSIGN>
   struct _bit_int_reference
   {
       
-    _bit_int_reference(unsigned bitsz, bref p): p_(p), bitsz_(bitsz){}
-    _bit_int_reference(){}
+    _bit_int_reference(unsigned bitsz, bref p): p_(p), bitsz_(bitsz){read();}
+    _bit_int_reference(const _bit_int_reference& rhs):
+      p_(rhs.p_), bitsz_(rhs.bitsz_), value_(rhs.value_){}
+
+    // for the time being, let us be as restrictive as we can
+    // _bit_int_reference(){}
+    // _bit_int_reference(const _bit_int_reference& rhs);
 
     operator SIGN_UNSIGN() const {
       // std::cout << "READ: ";  print(std::cout); std::cout << std::endl; 
-      return read();
+      return value_;
     }
 
     _bit_int_reference&
     operator=(SIGN_UNSIGN __x) {
       // std::cout << "WRITE: ";  print(std::cout); std::cout << "<<" << __x << std::endl; 
-      write(__x);
+      write(value_ = __x);
       return *this;
     }
 
     inline  _bit_int_reference&
     operator=(const _bit_int_reference& __x){ 
       // std::cout << "RWRITE: ";  print(std::cout); std::cout << "<<" << __x.read() << std::endl; 
-      write(__x.read());
+      write(value_ = __x.value_);
       return *this;
     }
 
     bool
     operator<(const _bit_int_reference& __x) const
-    { return read() < __x.read(); }
+    { return value_ < __x.value_; }
 
     
     void print(std::ostream& out)const{
-      p_.print(out); out << " " << read();
+      p_.print(out); out << " " << value_;
     }
 
-
   private:
-    bref p_;  
-    unsigned bitsz_;
-    inline SIGN_UNSIGN read()const           { return p_.read_as<SIGN_UNSIGN>(bitsz_); }
-    inline void        write(SIGN_UNSIGN __x){        p_.write(bitsz_, __x); } 
+    bref                p_;  
+    unsigned            bitsz_;
+    mutable SIGN_UNSIGN value_;
+    inline void  read()const           { value_ = p_.read_as<SIGN_UNSIGN>(bitsz_); }
+    inline void  write(SIGN_UNSIGN __x){          p_.write(bitsz_, __x); } 
 
+
+    // for the time being, let us be as restrictive as we can
+    _bit_int_reference() = delete;
   }; // struct _bit_int_reference
-
 
   // swap
   //
   // swaps deep down to the undrlying bit-integer
   template<typename _S>
-  void swap(_bit_int_reference<_S> lhs, _bit_int_reference<_S> rhs){
+  inline void swap(_bit_int_reference<_S> lhs, _bit_int_reference<_S> rhs){
     _S t = lhs;
     lhs = (_S)rhs;
     rhs = t;
   }
 
   template<typename _S>
-  void swap(_S& lhs, _bit_int_reference<_S> rhs){
+  inline void swap(_S& lhs, _bit_int_reference<_S> rhs){
     _S tmp = lhs;
     lhs = rhs;
     rhs = tmp;
   }
 
   template<typename _S>
-  void swap(_bit_int_reference<_S> lhs, _S& rhs){
+  inline void swap(_bit_int_reference<_S> lhs, _S& rhs){
     _S tmp = lhs;
     lhs = rhs;
     rhs = tmp;
   }
-
 
   // boost_facade_style_itr
   //

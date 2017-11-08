@@ -2,11 +2,11 @@
 
 ## Rational
 
-Implementing codecs, variable codec serialization and algorithms requiring arbitrary bit sized integers (or states) frequently results in having to rewrite bit access operators.  These operations can be difficult to correctly implement particularly with regards to boundary conditions, two's complement arithmetic and branch reduction.  The bitstrm library attempts to address each these concerns while providing a clean interface.
+Implementing codecs, variable codec serialization and algorithms requiring arbitrary bit sized integers (or states) frequently result in having to rewrite bit access operations.  These operations can be difficult to correctly implement particularly with regards to boundary conditions, two's complement arithmetic and branch reduction.  The bitstrm library attempts to address these concerns while providing a clean interface.
 
 ## Implementation
 
-Implemented as a header only library compatible to `-std=c++11`, this code offers lightweight compilation (e.g. even weighty `std::ostream` for print comes in with optional `#include "/bitstrm/print.hpp"` ).  Note that I've included a few references to `boost_1_57`.  They may possibly be omitted.  Optional example code and boost unit testing may be built with `cmake`.
+Implemented as a header only library compatible to `-std=c++11`, this code offers lightweight compilation (e.g. even weighty `std::ostream` for print comes in with optional `#include "/bitstrm/print.hpp"` ).  Note that I've included a few references to `boost_1_57`.  They may possibly be omitted.  Optional example code and boost style unit testing can be built with `cmake`.
 
 
 ## Features
@@ -23,7 +23,7 @@ Implemented as a header only library compatible to `-std=c++11`, this code offer
 ## Architecture
 
 ### Basic
-`reg` and `ureg`, defined as `int64_t` and `uint64_t` respectively, serve as the upper integer size and as the internal working word.  Larger words are generally preferred for working even with small number of bits requiring less fetching and word boundry stitching.  Endian transformation assures that off word allocation works as expected, and apparently without performance loss, however user beware as memory tools will object (uninitialized memory read, unowned memory write) and non-atomic operations will occur on trailing bytes as well as added potential for conflict with concurrent operations. 
+`reg` and `ureg`, defined as `int64_t` and `uint64_t` respectively, serve as the upper integer size and as the internal working word.  Large words are generally preferred as they require less fetching and word boundry stitching.  Endian transformation assures that off word allocation works as expected, and apparently without performance loss, however user beware as memory tools will object (uninitialized memory read, unowned memory write) and non-atomic operations will occur on trailing bytes adding to the potential for conflict with concurrent programming. 
 
 The `bref` class codecs to/from the bitstrm `reg`/`ureg` (with the extent [0,64] bits) by default as though as a pointer to an individual bit, and with methods for pulling that and subsequent bits to either a signed or unsigned integer value.
 
@@ -42,15 +42,15 @@ Two examples of such numeric decomposition are
 * if the magnitude is bound (e.g. `min_bits({<src_array>} => bsize`) then only `min_bits` are required to store each element in sequence of src_array, and
 * if the magnitude id known (e.g. a singular value, (min_bits(value + 1) - 1 ) => bsize) then run length specified(rls) encoding can be used
 
-In both of these techniques its notable that the magnitude of '0' _*always*_ translates to '0' and written as a non-operation.  Thus the common array of all zero's {0,0,0,...,0} and the individual zero value {0} with externalized magnitude both code to {} 
+In both of these techniques its notable that the magnitude of '0' _*always*_ translates to '0' and written as a non-operation.  Thus the common array of all zero's {0,0,0,...,0} and the individual zero value {0} with externalized magnitude both code to {}.
 
 
 ### Rational for `0` Width Integer:
 Intuitively for _2^i_ with _i_ being the index of the bits _i:{null, 0, 1, 2, ..}_ correspond to _bsize:{0, 1, 2, 3, ...}_ then _2^null <=> 0_ value, as in the _i=0_ case,  with _run length specified encoding_ the corresponding `0b0` does not imply the `0` value but rather the _(1 << i) - 1 + `0b0` <=> 1_ value, likewise `0b00`, `0b000`, ... need not similarly represent _0_.  They can represent other values! 
-reference:  `bref.hpp // run length
+reference:  `bref.hpp /run length/
 
 ### Fixed Width Iterator 
-Using a reference object (like `std::vector<bool>::iterator`) `bit_int_itr` integrates the bitstrm functionality directly into many std and iterator-based algorithms with a minimal overhead.  Under some circumstances it even produces even faster access than native 1, 2, 4, and 8 byte POD access.
+Using a reference object (like `std::vector<bool>::iterator`) `bit_int_itr` integrates the bitstrm functionality directly into many std and iterator-based algorithms with a minimal overhead.  Under some circumstances it may produce quicker operation than native 1, 2, 4, and 8 byte POD access.
 
 ## State
 

@@ -21,7 +21,7 @@
 // r0++ avavances the reference by 1 bit, etc.
 //
 // standard access is provided by read/write methods, applying to [0,
-// sizeof(reg)*__CHAR_BIT__) (e.g. 63 bits) bit(s) of memory, where
+// sizeof(reg)*__CHAR_BIT__) (e.g. 64 bits) bit(s) of memory, where
 // bits == 0 <=> 0 value for read (or non-operation for write), a
 // practical convention for many codecs.
 

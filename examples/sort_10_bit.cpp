@@ -28,12 +28,13 @@ int main(int /*argc*/ , const char** /*argv*/){
   vector<short>           testSet16(testSize);
   vector<short>::iterator c16(testSet16.begin());
   const reg               ten_bit_mask((1<<10) -1);
-  alloced_bref buf(testSize *10);
+  alloced_bref buf(testSize*10);
   bit_int_itr<10,reg>     b0(buf);
   bit_int_itr<10,reg>     bc(b0);
   {
-    TimeFixture fixture((string("created ") + boost::lexical_cast<string>(testSize) 
-                         + " random elements storing as reg, short and 10 bit reg").c_str());
+    string msg(string("created ") + boost::lexical_cast<string>(testSize) 
+     + " random elements storing as reg, short and 10 bit reg");
+    TimeFixture fixture(msg.c_str());
     for(vector<reg>::iterator e = testSet64.end(); 
         c64 < e; 
         ++c64, ++c16,  ++bc)
@@ -61,6 +62,5 @@ int main(int /*argc*/ , const char** /*argv*/){
     TimeFixture fixture("sorting as 10 bit signed integer", testSize);
     sort(bc, be);
   }
-  
 }
 

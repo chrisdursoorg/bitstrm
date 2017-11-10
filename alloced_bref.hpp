@@ -41,6 +41,11 @@ namespace bitstrm {
       this->bref::operator=(bref(&*m_buf.begin()));
     }
 
+    // zero
+    //
+    // fills the underlying allcoated memory to zero
+    void zero(){fill(m_buf.begin(), m_buf.end(), 0); }
+    
   private:
     std::vector<ureg> m_buf;
   };

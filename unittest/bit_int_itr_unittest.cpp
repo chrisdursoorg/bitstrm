@@ -13,6 +13,7 @@
 #include "bitstrm/bit_int_itr.hpp"
 #include <limits>
 #include <algorithm>
+#include <iostream>
 
 using namespace boost::unit_test;
 using namespace bitstrm;
@@ -54,23 +55,26 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
   BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "the itr should return the original sequence");
 }
 
-BOOST_AUTO_TEST_CASE(boost_style_itr)
+BOOST_AUTO_TEST_CASE(dynamic_interface_style_itr)
 {
-  alloced_bref any(0);
+  // bit_int_itr performs read on assignment, memory must actually be
+  // allocated
+  alloced_bref any(256); 
   const int arbitrary_size = 4;
-  typedef boost_facade_style_itr<ureg, arbitrary_size> test_itr;
-  test_itr begin(any);
-  test_itr empty_end(any);
-  test_itr two_end(any + arbitrary_size*2 );
+  dbit_int_itr<ureg> begin(any, arbitrary_size);
+  dbit_int_itr<ureg> empty_end(begin);
+  dbit_int_itr<ureg> two_end(any + arbitrary_size*2, arbitrary_size);
+  dbit_int_itr<ureg> two_by_itr_end(begin + 2);
   
   // address checking
+  BOOST_CHECK( two_end == two_by_itr_end);
   BOOST_CHECK( begin == empty_end);
   BOOST_CHECK( begin < two_end );
   BOOST_CHECK( begin + 1 < two_end );
   BOOST_CHECK( begin + 2 == two_end );
   BOOST_CHECK( begin != two_end );
   BOOST_CHECK( two_end - begin == 2);
-  test_itr t = begin  + 1;
+  dbit_int_itr<ureg> t = begin  + 1;
   BOOST_CHECK( --t == begin);
   BOOST_CHECK( t + 2 == two_end );
   BOOST_CHECK( t     == begin);
@@ -82,9 +86,9 @@ BOOST_AUTO_TEST_CASE(boost_style_itr)
   // assignments to some space on the stack
   alloced_bref buf(arbitrary_size*5);
   any = buf;
-  begin   = test_itr(any);
-  test_itr cur(begin);
-  test_itr end(any + arbitrary_size*5);
+  begin   = dbit_int_itr<ureg>(any, arbitrary_size);
+  dbit_int_itr<ureg> cur(begin);
+  dbit_int_itr<ureg> end(any + arbitrary_size*5, arbitrary_size);
   for(int i = 0; cur != end; ++cur, ++i){
     *cur = i;
     BOOST_CHECK(cur - begin == i);
@@ -105,7 +109,6 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways_boost_style )
   containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
 
   const unsigned bitSz = 4;
-  typedef boost_facade_style_itr<ureg, bitSz> test_itr;
 
   BOOST_CHECK(min_bits(container.begin(), container.end()) <= bitSz);
   std::vector<char> buf(bref::_chars(bitSz * container.size()) + 2);
@@ -117,8 +120,8 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways_boost_style )
   bref p2(&buf2.front()+1);
   bref pe(p2 + container.size()*bitSz); // and continues until "magic number"
 
-  test_itr bc(p2);
-  test_itr be(pe);
+  bit_int_itr<bitSz, ureg> bc(p2);
+  bit_int_itr<bitSz, ureg> be(pe);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
   for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
@@ -139,7 +142,6 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_with_dynamic_bsize_ways_boost_s
   containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
 
   unsigned bitSz = 4;
-  typedef boost_facade_style_itr<ureg> test_itr;
 
   BOOST_CHECK(min_bits(container.begin(), container.end()) <= bitSz);
   std::vector<char> buf(bref::_chars(bitSz * container.size()) + 2);
@@ -151,8 +153,8 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_with_dynamic_bsize_ways_boost_s
   bref p2(&buf2.front()+1);
   bref pe(p2 + container.size()*bitSz); // and continues until "magic number"
 
-  test_itr bc(p2, bitSz*1);
-  test_itr be(pe, bitSz*1);
+  dbit_int_itr<ureg> bc(p2, bitSz*1);
+  dbit_int_itr<ureg> be(pe, bitSz*1);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
   for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
@@ -279,6 +281,48 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
   BOOST_CHECK(equal(container.begin(),container.end(), bc));
 }
 
+BOOST_AUTO_TEST_CASE(itr_small_case){
+  vector<unsigned> test{{21 ,77 ,485 ,497 ,502 ,667 ,688 ,708 ,744 ,825 ,906 ,1015}};
+  alloced_bref buf((test.size())*10);
+  bit_int_itr<10,ureg>  b0(buf);
+  bit_int_itr<10,ureg>  be = copy(test.begin(), test.end(), b0);
+  sort(test.begin(), test.end());
+  sort(b0, be);
+  BOOST_CHECK(be-b0 == long(test.size()));
+  BOOST_CHECK(equal(test.begin(), test.end(), b0));
+}
+
+BOOST_AUTO_TEST_CASE(little_10_bit_sort){
+  vector<ureg> testSet;
+  
+  for(int i = 0; i < 13; ++i){
+    const size_t testSize = i; 
+    BOOST_TEST_MESSAGE( "ureg v 10 bits sort with " << testSize << " elements");
+    testSet.resize(testSize);  
+    vector<ureg>::iterator c(testSet.begin());
+    vector<ureg>::iterator e(testSet.end());
+    const ureg ten_bit_mask((1<<10) -1);
+  
+    alloced_bref buf((testSize)*10);
+    bit_int_itr<10,ureg>  b0(buf);
+    bit_int_itr<10,ureg>  bc(b0);
+
+    for(; c < e; ++c, ++bc)
+      *bc = *c = (ureg)rand() & ten_bit_mask;
+  
+    bit_int_itr<10,ureg> be(bc);
+    bc = b0;
+  
+    BOOST_CHECK(size_t(be - bc) == testSize);
+  
+    BOOST_TEST_MESSAGE("sort ureg");
+    sort(testSet.begin(), testSet.end());
+
+    BOOST_TEST_MESSAGE("sort (10 bit unsigned) ");
+    sort(bc, be);
+    BOOST_CHECK(equal(testSet.begin(), testSet.end(), bc));
+  }
+}
 
 BOOST_AUTO_TEST_CASE(sort_10_bit_unsigned)
 {
@@ -288,9 +332,9 @@ BOOST_AUTO_TEST_CASE(sort_10_bit_unsigned)
   vector<ureg>::iterator c(testSet.begin());
   vector<ureg>::iterator e(testSet.end());
   const ureg ten_bit_mask((1<<10) -1);
-  vector<char> buf((testSize *10 + 7)/8);
-
-  bit_int_itr<10,ureg>  b0(bref(&buf.front()));
+  
+  alloced_bref buf((testSize)*10);
+  bit_int_itr<10,ureg>  b0(buf);
   bit_int_itr<10,ureg>  bc(b0);
 
   for(; c < e; ++c, ++bc)
@@ -298,13 +342,15 @@ BOOST_AUTO_TEST_CASE(sort_10_bit_unsigned)
     
   bit_int_itr<10,ureg> be(bc);
   bc = b0;
+
+  BOOST_CHECK((be - bc) == testSize);
         
   BOOST_TEST_MESSAGE("sort ureg");
   sort(testSet.begin(), testSet.end());
 
   BOOST_TEST_MESSAGE("sort (10 bit unsigned) ");
-    sort(bc, be);
-    
+  sort(bc, be);
+
   BOOST_CHECK(equal(testSet.begin(), testSet.end(), bc));
 }
 
@@ -371,7 +417,8 @@ BOOST_AUTO_TEST_CASE(example_2){
   for(auto cur = beg; cur != end; ++cur){ *cur = i++; }
   random_shuffle(beg, end);
   
-  BOOST_TEST_MESSAGE("check to see that each value is represented exactly once");
+  BOOST_TEST_MESSAGE("check to see that each value is represented exactly once"
+                     );
   vector<ureg> buf2(1024/c_register_bits, 0);
   bref check(&buf2.front());  // dereferencing a bref acts as a bit vector
   for_each(beg, end, [&check](ureg val){
@@ -379,8 +426,74 @@ BOOST_AUTO_TEST_CASE(example_2){
       (check + val).write(1, 1);
     });
 
-  BOOST_TEST_MESSAGE("by virtue of the count and completeness, we have found and hit"
-                     "every value [0,1024");
+  BOOST_TEST_MESSAGE("by virtue of the count and completeness, we have found "
+                     "and hit every value [0,1024");
+  
+}
+
+BOOST_AUTO_TEST_CASE(code_example_1){
+
+  BOOST_MESSAGE("Complete ten bit shuffled table constructed an verified");
+  alloced_bref buf(10*1024);
+  bit_int_itr<10, ureg> beg(buf);
+  bit_int_itr<10, ureg> end(beg + 1024);
+  
+  unsigned i = 0;
+  for(auto cur = beg; cur != end; ++cur, ++i)
+    *cur = i;
+
+  random_shuffle(beg, end);
+
+  // fill check array with zero's 
+  alloced_bref checkbuf(1024);
+  bit_int_itr<1, ureg> check(checkbuf);
+  for(auto e = check + 1024; check != e; ++check){ *check = 0;}
+  
+  bit_int_citr<10, ureg> cbeg(beg);
+  bit_int_citr<10, ureg> cend(end);
+
+  check = bit_int_itr<1, ureg>(checkbuf);
+  for(;cbeg != end; ++cbeg){
+    // assert(check[*cbeg]++ == 0); would seem elegent
+    // but we have to do this in three statements
+    auto ref_proxy = *(check + *cbeg);
+    BOOST_CHECK_MESSAGE( ref_proxy == 0, "value: " << ref_proxy << " place: " << *cbeg);
+    ref_proxy = 1;
+  }
+
+    BOOST_TEST_MESSAGE("by virtue of the count and completeness, we have found "
+                     "and hit every value [0,1024");
+}
+
+BOOST_AUTO_TEST_CASE(code_example_2){
+
+  int k = 10;
+  alloced_bref buf(k*1024);
+  dbit_int_itr<ureg> beg(buf, k);
+  dbit_int_itr<ureg> end(beg + (1 << k));
+  unsigned i = 0;
+  for(auto cur = beg; cur != end; ++cur){ *cur = i++; }
+  random_shuffle(beg, end);
+
+  // fill check array with zero's 
+  alloced_bref checkbuf(1024);
+  bit_int_itr<1, ureg> check(checkbuf);
+  for(auto e = check + 1024; check != e; ++check){ *check = 0;}
+
+  dbit_int_citr<ureg> cbeg(beg);
+  dbit_int_citr<ureg> cend(end);
+  
+  check = bit_int_itr<1, ureg>(checkbuf);
+  for(;cbeg != end; ++cbeg){
+    // assert(check[*cbeg]++ == 0); would seem elegent
+    // but we have to do this in three statements
+    auto ref_proxy = *(check + *cbeg);
+    BOOST_CHECK_MESSAGE( ref_proxy == 0, "value: " << ref_proxy << " place: " << *cbeg);
+    ref_proxy = 1;
+  }
+
+  BOOST_TEST_MESSAGE("by virtue of the count and completeness, we have found "
+                     "and hit every value [0,1024");
   
 }
 

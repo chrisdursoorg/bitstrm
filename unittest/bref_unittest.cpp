@@ -388,3 +388,12 @@ BOOST_AUTO_TEST_CASE(read_write_rlp_bigger){
     // or {0}{1, 2}{3, 4, 5, 6}{7, 8, 9, 10, 11, 12, 13, 14}, where we have the ranges of 0, 1, 2, and 3 bits
   }
 
+
+BOOST_AUTO_TEST_CASE(documentation_example){
+  const unsigned c_at_least_3_and_internally_stored_to_full_64_bit_boundry = 3;
+  alloced_bref example_buf(c_at_least_3_and_internally_stored_to_full_64_bit_boundry);
+  bref begin = example_buf;
+  example_buf.iwrite(min_bits(-4), -4); // write 3 bits encoding -4 to example_buf while advancing
+  bref end = example_buf;               // now, encoded as a single signed integer, [begin, end) -> -4
+  assert(begin.read_reg(end-begin) == -4);
+}

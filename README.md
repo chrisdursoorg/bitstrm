@@ -4,6 +4,10 @@
 
 Implementing codecs, variable codec serialization and algorithms requiring arbitrary bit sized integers (or states) frequently result in having to rewrite bit access operations.  These operations can be difficult to correctly implement particularly with regards to boundary conditions, two's complement arithmetic and branch reduction.  The bitstrm library attempts to address these concerns while providing a clean interface.
 
+## Motivation
+
+The primary motivation for compression is to improve performance and or permit problems that would otherwise exceed memory capacity to be solved.  Improvement of performance may be achieved by reducing transit to and from from slower memory sources and deposits,  by increasing the information density in any storage and by permitting more advanced (and typically larger) or additional data structures to reside in the same or smaller memory footprint as their less advanced counterparts. You can use bitstrm methods directly or as primitives to an built up codec or datastructure.
+
 ## Implementation
 
 Implemented as a header only library compatible to `-std=c++11`, this code offers lightweight compilation (e.g. even weighty `std::ostream` for print comes in with optional `#include "/bitstrm/print.hpp"` ).  Note that I've included a few references to `boost_1_57`.  They may possibly be omitted.  Optional example code and boost style unit testing can be built with `cmake`.
@@ -36,21 +40,17 @@ bref end = example_buf;               // now, encoded as a single signed integer
 assert(begin.read_reg(end-begin) == -4);
 ```
 ### Externalization of Magnitude
-There are many methods of recording numbers.  Bitstrm is oriented about the exploit that numbers may be decomposed into magnitude and mantissa.  Where the magnitude is know, bound or otherwise there exists a mechanism to extrenalize that magnitude information need not be stored locally and may serve as the dual purose of storing part of the number *and* the extent or addressing of the mantissa value.  Thus decomposition may serve as a powerful compressive and/or indexing technique into a stream of multiple variable sized values.
 
-Two examples of such numeric decomposition are
-* if the magnitude is bound (e.g. `min_bits({<src_array>} => bsize`) then only `min_bits` are required to store each element in sequence of src_array, and
-* if the magnitude id known (e.g. a singular value, (min_bits(value + 1) - 1 ) => bsize) then run length specified(rls) encoding can be used
+There are many methods of recording numbers.  For integers the common is a binary or 2's compliment positional radix system of fixed width. Think of bitstrm as a superset of the traditional view as it is not limited to fixed widths of k : {8, 16, 32, …, max_reg_ister_size} with numbers falling on falling on (1, 2, 4, 8}-byte boundaries.  Additionally, bitstrm supports a second _run length specified_ (_rls_) format for whole numbers which maximally utilize externalized magnitude.  The magnitude(value) or k-bits is defined as (min_bits(value + 1) - 1) thus allowing for the coding of values on top of the basis 2^_k_ -1.  In contrast to positional radix _rls_ padding alters the base by increasing k, thus more efficiently utilizes bit state (e.g. '0b' != '0b0' != '0b00' and instead corresponds to values {0, 1, 3} respectively).  _Rls_ may be deployed  where magnitude is absolutely known. 
 
-In both of these techniques its notable that the magnitude of '0' _*always*_ translates to '0' and written as a non-operation.  Thus the common array of all zero's {0,0,0,...,0} and the individual zero value {0} with externalized magnitude both code to {}.
-
+Bitstrm is oriented about the exploit that numbers may be decomposed into magnitude and remainder loosening reliance of the fixed width, hence permitting packing of arbitrary widths into a contiguous streams of bits.  When the magnitude is know, bound or if there exists a mechanism to store, that part of the value need not be stored directly within the number.  Additionally such a magnitude it may serve additional purposes of storing the extent of the mantissa value and potentially the extent or offset within a larger a set of numbers. Thus decomposition serves as a powerful compressive, indexing or analytic technique providing a mechanism useful for multiple packed values with little additional processing or code complexity.
 
 ### Rational for `0` Width Integer:
-Intuitively for _2^i_ with _i_ being the index of the bits _i:{null, 0, 1, 2, ..}_ correspond to _bsize:{0, 1, 2, 3, ...}_ then _2^null <=> 0_ value, as in the _i=0_ case,  with _run length specified encoding_ the corresponding `0b0` does not imply the `0` value but rather the _(1 << i) - 1 + `0b0` <=> 1_ value, likewise `0b00`, `0b000`, ... need not similarly represent _0_.  They can represent other values! 
-reference:  `bref.hpp /run length/
 
-### Fixed Width Iterator 
-Using a reference object (like `std::vector<bool>::iterator`) `bit_int_itr` integrates the bitstrm functionality directly into many std and iterator-based algorithms with a minimal overhead.  Under some circumstances it may produce quicker operation than native 1, 2, 4, and 8 byte POD access.
+With binary or 2's compliment radix, bound magnitude numbers are often useful in arrays where each element can be represented in _k_-bits.  Allowing _k_ = _{0,1,2,3,…}_, note that absolute  _x_ is strictly less than the bounding magnitude, i.e. 2^_k_ > |_x_| (as it forms an excluding upper bound), for _k_ = 0 and since 2^_0_ -> 1,  only absolute whole number less than _1_ must be _0_.
+
+
+Intuitively considering known magnitude numbers of _k_—bits, allow for the most significant bit to be i:{null, 0, 1, 2, ..} correspond to bsize:{0, 1, 2, 3, ...} respectively.  Clearly i= 0, 2^0 -> 1, but what of i = null or 2^null?  This should be less than 1 by sequential order and non overlapping with +/- {} or any other representative number hence 2^null <=> 0 value.  Note that rls encoding of 0b0 does not imply the 0 value but rather the (1 << i) - 1 + 0b0 <=> 1 value, likewise 0b00, 0b000, ... would not represent 0, rather they can represent other values! see: `bref.hpp /run length/
 
 ## State
 

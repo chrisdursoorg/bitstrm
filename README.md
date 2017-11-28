@@ -6,11 +6,13 @@ Implementing codecs, variable codec serialization and algorithms requiring arbit
 
 ## Motivation
 
-The primary motivation for compression is to improve performance and or permit problems that would otherwise exceed memory capacity to be solved.  Improvement of performance may be achieved by reducing transit to and from from slower memory sources and deposits,  by increasing the information density in any storage and by permitting more advanced (and typically larger) or additional data structures to reside in the same or smaller memory footprint as their less advanced counterparts. You can use bitstrm methods directly or as primitives to an built up codec or datastructure.
+The primary motivation for compression is to improve performance and or permit problems that would otherwise exceed memory capacity to be solved.  Improvement of performance may often be achieved by reducing transit to and from from slower memory sources and deposits.  Additional mechanisms for performance improvement include, increasing the information density, particularly in conjunction with improvemnets in data locality to win the optimization either at the CPU memory bus level or at the CPU rack/switch level. Further improvements in data density may permit advanced (and typically larger) or additional data structures to reside in the same or smaller memory footprint as their less performant counterparts. 
+
+The Bitstrm library may be used directly or to an built up a codec or datastructure.
 
 ## Implementation
 
-Implemented as a header only library compatible to `-std=c++11`, this code offers lightweight compilation (e.g. even weighty `std::ostream` for print comes in with optional `#include "/bitstrm/print.hpp"` ).  Note that I've included a few references to `boost_1_57`.  They may possibly be omitted.  Optional example code and boost style unit testing can be built with `cmake`.
+Implemented primarily as header only library compatible to `-std=c++11`, this code offers lightweight compilation (e.g. even weighty `std::ostream` for print comes in with optionally such as with `#include "/bitstrm/print.hpp"` inclusion ).  Note that I've included a few references to `boost_1_57`.  They may possibly be omitted.  Optional example code and boost style unit testing can be built with `cmake`.
 
 
 ## Features
@@ -29,11 +31,11 @@ Implemented as a header only library compatible to `-std=c++11`, this code offer
 ### Basic
 `reg` and `ureg`, defined as `int64_t` and `uint64_t` respectively, serve as the upper integer size and as the internal working word.  Large words are generally preferred as they require less fetching and word boundry stitching.  Endian transformation assures that off word allocation works as expected, and apparently without performance loss, however user beware as memory tools will object (uninitialized memory read, unowned memory write) and non-atomic operations will occur on trailing bytes adding to the potential for conflict with concurrent programming. 
 
-The `bref` class codecs to/from the bitstrm `reg`/`ureg` (with the extent [0,64] bits) by default as though as a pointer to an individual bit, and with methods for pulling that and subsequent bits to either a signed or unsigned integer value.
+The `bref` class codecs to/from the bitstrm `reg`/`ureg` (with the extent [0,64] bits) with the default behavior to be a pointer to an individual bit, and with methods for pulling that and subsequent bits to either a signed or unsigned integer value.
 
 ```
 // example, storage and retrival of 3 bit integer
-alloced_bref example_buf(c_at_least_3_and_internally_stored_to_full_64_bit_boundry);
+alloced_bref example_buf(c_at_least_3_and_internally_stored_on_full_64_bit_boundry);
 bref begin = example_buf;
 example_buf.iwrite(min_bits(-4), -4); // write 3 bits encoding -4 to example_buf while advancing
 bref end = example_buf;               // now, encoded as a single signed integer, [begin, end) -> -4
@@ -50,7 +52,7 @@ Bitstrm is oriented about the exploit that numbers may be decomposed into magnit
 With binary or 2's compliment radix, bound magnitude numbers are often useful in arrays where each element can be represented in _k_-bits.  Allowing _k_ = _{0,1,2,3,…}_, note that absolute  _x_ is strictly less than the bounding magnitude, i.e. 2^_k_ > |_x_| (as it forms an excluding upper bound), for _k_ = 0 and since 2^_0_ -> 1,  only absolute whole number less than _1_ must be _0_.
 
 
-Intuitively considering known magnitude numbers of _k_—bits, allow for the most significant bit to be i:{null, 0, 1, 2, ..} correspond to bsize:{0, 1, 2, 3, ...} respectively.  Clearly i= 0, 2^0 -> 1, but what of i = null or 2^null?  This should be less than 1 by sequential order and non overlapping with +/- {} or any other representative number hence 2^null <=> 0 value.  Note that rls encoding of 0b0 does not imply the 0 value but rather the (1 << i) - 1 + 0b0 <=> 1 value, likewise 0b00, 0b000, ... would not represent 0, rather they can represent other values! see: `bref.hpp /run length/
+Intuitively considering known magnitude numbers of _k_—bits, allow for the most significant bit to be i:{null, 0, 1, 2, ..} correspond to bsize:{0, 1, 2, 3, ...} respectively.  Clearly i= 0, 2^0 -> 1, but what of i = null or 2^null?  This should be less than 1 by sequential order and non overlapping with +/- {} or any other representative number hence 2^null <=> 0 value.  Note that rls encoding of 0b0 does not imply the 0 value but rather the (1 << i) - 1 + 0b0 <=> 1 value, likewise 0b00, 0b000, ... would not represent 0, rather they can represent other values! see: `bref.hpp /run length/`
 
 ## State
 

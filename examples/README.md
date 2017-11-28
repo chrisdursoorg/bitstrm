@@ -68,7 +68,7 @@ Process 19773 exited with status = 0 (0x00000000)
 ```
 This _committed code_ listing illustrates an instance that the compressed data processes significantly less time than the native version.  As with the sort_10 graph traversal the algorithm is inherently random access.  Both native and bitstrm version do share reference_wrapper for the traversal state, however the bitstrm path utilizes a `bit_int_citr` for the graph itself which importantly *does not utilize a reference_wrapper*.  Speed improvement is attributable to the better utilization of the 3 megabyte L2 cache.  With much smaller graph or much larger graphs the native path comes back to lead performance, because the entire native graph or neither graph fits well into L2 cache.
 
-This is only one example of perfomance improvements with bitstrm.  Other basis for improvements are addition of performance enhancing state facititated by the data compression, or due to the increasing the density of data and consequtial reduction of memory bus or network contention.
+This is only one example of performance improvements with bitstrm.  Other basis for improvements are addition of performance enhancing state facilitated by the data compression, or due to the increasing the density of data and consequential reduction of memory bus or network contention.
 
 ```
 bash-3.2$ ./cycle_test 1234567

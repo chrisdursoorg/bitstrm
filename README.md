@@ -34,7 +34,7 @@ Implemented primarily as header only library compatible to `-std=c++11`, this co
 The `bref` class codecs to/from the bitstrm `reg`/`ureg` (with the extent [0,64] bits) with the default behavior to be a pointer to an individual bit, and with methods for pulling that and subsequent bits to either a signed or unsigned integer value.
 
 ```
-// example, storage and retrival of 3 bit integer
+// example, storage and retrieval of 3 bit integer
 alloced_bref example_buf(c_at_least_3_and_internally_stored_on_full_64_bit_boundry);
 bref begin = example_buf;
 example_buf.iwrite(min_bits(-4), -4); // write 3 bits encoding -4 to example_buf while advancing
@@ -65,7 +65,7 @@ I am comfortable with `gcc` and `clang` compile on `x86` platform, and be very g
 alloced_bref alloc0(3);
 bref p0 = alloc0;             // make some 'pointers'
 bref p1 = p0;
-assert(p0 == p1);             // pointers allign
+assert(p0 == p1);             // pointers align
 p0.iwrite(3, 6);              // write small unsigned value 6, incr p0
 assert(p0 > p1);              // p0 past p1
 assert(p0 - p1 == 3);         // by 3 bits

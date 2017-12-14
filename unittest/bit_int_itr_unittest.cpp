@@ -433,7 +433,7 @@ BOOST_AUTO_TEST_CASE(example_2){
 
 BOOST_AUTO_TEST_CASE(code_example_1){
 
-  BOOST_MESSAGE("Complete ten bit shuffled table constructed an verified");
+  BOOST_TEST_MESSAGE("Complete ten bit shuffled table constructed an verified");
   alloced_bref buf(10*1024);
   bit_int_itr<10, ureg> beg(buf);
   bit_int_itr<10, ureg> end(beg + 1024);

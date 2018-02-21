@@ -18,7 +18,7 @@ namespace bitstrm {
   class alloced_bref : public bref {
   public:
 
-    alloced_bref(ureg bsize): m_buf(uregs(bsize)){ reset(); }
+    alloced_bref(ureg bsize){allocate(bsize);}
     alloced_bref(){}
 
     // swap
@@ -32,7 +32,11 @@ namespace bitstrm {
     // allocate
     //
     // allow for late initialization as is often useful for build up of substreams
-    void allocate(ureg bsize) { m_buf.resize(uregs(bsize)); reset();} 
+    void allocate(ureg bsize) {
+      m_buf.resize(uregs(bsize));
+      m_bytesize = bref::_chars(bsize);
+      reset();
+    } 
     
     // reset
     //
@@ -45,9 +49,25 @@ namespace bitstrm {
     //
     // fills the underlying allcoated memory to zero
     void zero(){fill(m_buf.begin(), m_buf.end(), 0); }
+
+
+    // data
+    //
+    // returns a pointer to the begining of internal buffer for io
+    // operations.  Result invalidated on allocate.
+    const char* data()const{ return reinterpret_cast<const char*>(&m_buf.front()); }
+          char* data()     { return reinterpret_cast<      char*>(&m_buf.front()); }
+
+    
+    // bytesize
+    //
+    // the underlying 'whole byte' size as indicated with bsize
+    ureg bytesize()const{ return m_bytesize; }
+
     
   private:
     std::vector<ureg> m_buf;
+    ureg              m_bytesize;
   };
 
 } 

@@ -60,31 +60,15 @@ namespace bitstrm {
     bref  operator--(int);
 
 
-    // run length specified encoding
-    // rls/rlp [r]un [l]ength [s]pecified or [p]refaced codecs:
+    // run length specified encoding rls/rlp [r]un [l]ength
+    // [s]pecified or [p]refaced codecs
     //
-    // generally integer codecs pack integers into fixed extent bit
-    // arrays, hence sequence of unsigned v[3]{0, 1, 2, 3} values can
-    // be packed into 0b00,01,10,11 @ 2 bsize per v and having a
-    // trivial sub addressing of +{0, 2, 4, 6} bits respectively
+    // a little counter intuitive run length specified maps integers
+    // in prefix + (2^(*prefix)-1) bits, or mapping the values
+    // [0, 2^(tbits-prefix) -2]
     //
-    // with rls assume an external entity specifies each bsize (or
-    // sub-addressing) of each value.  Here thus significant value
-    // information is held externally: again given v[3]{0, 1, 2, 3}
-    // <=> external_extents[4]{0,0,1,2,4}, wherein 0 - 0 => 0
-    // specifies v[0] entirely, (recall 0 bits <==> 0 value) futher
-    // 1 - 0 => 1, specifies v[1] = [1,3), and 2 - 1 => 1 specifes
-    // v[2] = [1,3), and 4 - 2 => 2 v[2] = [3,7), thus the remaining
-    // rls code for the full v[] is 0b,0,1,00 as it fills in what
-    // remains of the value information
-    //
-    // rlp or size prefaced is a hybrid of fixed and extent
-    // approaches, where the max value of v is known as 3, given
-    // upper_log(upper_log(3)) => 2 the {prefix}{suffix} format for
-    // v[3]{0, 1, 2, 3} is {00}{},{01}{0},{01}{1},{10}{00} or
-    // 0b00,010,011,1000 note that with rlp, no external or trivial
-    // addressing is possible, one must resort to forward sequential
-    // access to read all members
+    // See 
+
     
     // [i]read_{reg,ureg},iread_rls,iread_rlp}
     // 
@@ -195,12 +179,10 @@ namespace bitstrm {
     return bref::subtract(lhs, rhs);
   }
 
-  #if 1
   inline std::ostream& operator<< (std::ostream& lhs, const bref& rhs){
     rhs.print(lhs);
     return lhs;
   }
-  #endif
 
   // copy
   // 
@@ -214,6 +196,75 @@ namespace bitstrm {
   bool equal(bref begin, bref end, bref second);
 
 # include "bitstrm/bref_impl.hpp"
+  
+  // Illustration and Python program enumerating the ranges of
+  // p[refix]bits and t[otal]bits and also m[antissa]bits and
+  // the implicite base value associated the value of pbits
+
+  
+  // hformat = "{:>7s} ".join("      ")
+  // fformat = "{:7d} ".join("      ")
+  
+  // def first2last2(lst):
+  //     len = lst.__len__()
+  //     if len > 7 :
+  //         first2last2(lst[0:2])
+  //         print("{:^54s}".format("..."))
+  //         print(lst[int(len/2)])
+  //         print("{:^54s}".format("..."))
+  //         first2last2(lst[-2:])
+  //     else:
+  //         for i in lst:
+  //             print(i)
+
+
+  // print(hformat.format("pbits", "mbits", "tbits", "base", "max"))
+  // for pbits in range(1,7):
+  //     lines = []
+  //     for mbits in range(0, 1 << pbits):
+  //         tbits = mbits + pbits
+  //         base = (1 << mbits) -1
+  //         max = 2*base
+  //         lines.append(fformat.format(pbits, mbits, tbits, base, max))
+
+  //     first2last2(lines)
+  
+   // pbits    mbits    tbits     base      max  
+   //     1        0        1        0        0  
+   //     1        1        2        1        2  
+   //     2        0        2        0        0  
+   //     2        1        3        1        2  
+   //     2        2        4        3        6  
+   //     2        3        5        7       14  
+   //     3        0        3        0        0  
+   //     3        1        4        1        2  
+   //                       ...                          
+   //     3        4        7       15       30  
+   //                       ...                          
+   //     3        6        9       63      126  
+   //     3        7       10      127      254  
+   //     4        0        4        0        0  
+   //     4        1        5        1        2  
+   //                       ...                          
+   //     4        8       12      255      510  
+   //                       ...                          
+   //     4       14       18    16383    32766  
+   //     4       15       19    32767    65534  
+   //     5        0        5        0        0  
+   //     5        1        6        1        2  
+   //                       ...                          
+   //     5       16       21    65535   131070  
+   //                       ...                          
+   //     5       30       35  1073741823  2147483646  
+   //     5       31       36  2147483647  4294967294  
+   //     6        0        6        0        0  
+   //     6        1        7        1        2  
+   //                       ...                          
+   //     6       32       38  4294967295  8589934590  
+   //                       ...                          
+   //     6       62       68  4611686018427387903  9223372036854775806  
+   //     6       63       69  9223372036854775807  18446744073709551614 
+  
   
 } // namespace bitstrm
 

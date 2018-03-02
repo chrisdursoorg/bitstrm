@@ -119,7 +119,7 @@ bref::write(unsigned bsize, ureg value) const {
 
 inline ureg
 bref::iread_rls(unsigned sbits){
-  ureg base = (1 << sbits) - 1;
+  ureg base = (ureg(1) << sbits) - 1;
   return iread_ureg(sbits) + base;
 }
 
@@ -131,7 +131,7 @@ bref::iread_rlp(unsigned prefix_bits){
 
 inline void
 bref::iwrite_rls(ureg value, unsigned bsize){
-  ureg base = (1 << bsize) - 1;
+  ureg base = (ureg(1) << bsize) - 1;
   iwrite(bsize, value - base);
 }
 
@@ -142,6 +142,7 @@ bref::iwrite_rlp(ureg value, unsigned prefix_bits){
   iwrite_rls(value, suffix_bits);
 }
 
+#if 1
 /*static*/
 inline ureg
 bref::write_rlp_bsize(ureg value,
@@ -149,6 +150,7 @@ bref::write_rlp_bsize(ureg value,
   ureg bits = min_bits(value + 1) - 1;
   return bits + max_run_length_bits;
 }
+#endif
 
 // READ AND WRITE GENERIC END
 

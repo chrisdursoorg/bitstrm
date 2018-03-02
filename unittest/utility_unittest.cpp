@@ -6,9 +6,12 @@
 #define BOOST_TEST_MODULE "BitStreamUtility"
 
 #include <boost/test/unit_test.hpp>
+#include "bitstrm/alloced_bref.hpp"
 #include "bitstrm/utility.hpp"
 #include <limits>
 #include <array>
+#include <iostream>
+#include <iomanip>
 
 using namespace boost::unit_test;
 using namespace bitstrm;
@@ -201,3 +204,49 @@ BOOST_AUTO_TEST_CASE(bit_numeric_limits){
   BOOST_CHECK(numeric_limits_unsigned_max(64) ==  ULLONG_MAX);
 }
 
+
+BOOST_AUTO_TEST_CASE(rlp_table){
+  alloced_bref buf(128);
+  stringstream out;
+  out << "TABLE OF VALUES STORED IN RLP FORMAT VARYING PREFIX BITS" << endl
+       << endl; 
+  out << setw(5) << "PBITS" << setw(28) << "Q1[bits]" << setw(28) << "Q2[bits]"
+      << setw(28) << "Q3[bits]" << setw(28) << "Q4[bits]" << endl;
+
+  auto r = bsize_rlp(6148914691236517204ULL, 6);
+  
+  for(unsigned i = 0 ; i <= c_register_bit_addr_sz; ++i){
+    auto mv = max_value_rlp(i);
+
+    out << setw(5) << i;
+    for(auto denom = 4; denom >= 1; --denom){
+      auto v = mv/denom;
+      bref e = buf;
+      e.iwrite_rlp(v, i);
+      // BOOST_CHECK(true);
+      //BOOST_CHECK(e - buf == reg(bsize_rlp(v, i)));
+      BOOST_CHECK(buf.iread_rlp(i) == v);
+      out << setw(22) << v << '[' << setw(4) << bsize_rlp(v, i) << ']';
+    }
+    out << endl;    
+  }
+  BOOST_TEST_MESSAGE(out.str());
+  
+#if 0
+TABLE OF VALUES STORED IN RLP FORMAT VARYING PREFIX BITS
+
+PBITS                    Q1[bits]                    Q2[bits]                    Q3[bits]                    Q4[bits]
+    0                     0[   0]                     0[   0]                     0[   0]                     0[   0]
+    1                     0[   1]                     0[   1]                     1[   2]                     2[   2]
+    2                     3[   4]                     4[   4]                     7[   5]                    14[   5]
+    3                    63[   9]                    84[   9]                   127[  10]                   254[  10]
+    4                 16383[  18]                 21844[  18]                 32767[  19]                 65534[  19]
+    5            1073741823[  35]            1431655764[  35]            2147483647[  36]            4294967294[  36]
+    6   4611686018427387903[  68]   6148914691236517204[  68]   9223372036854775807[  69]  18446744073709551614[  69]
+#endif
+
+    
+                                
+
+  
+}

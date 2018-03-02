@@ -1,7 +1,9 @@
 // utility.hpp
 //
-// functions and utilities going great lengths to avoid branching for inclusion in inner loops, these functions also deal with the packing and unpacking
-// of signed or unsigned values to and from reg / ureg types
+// functions and utilities going great lengths to avoid branching for
+// inclusion in inner loops, these functions also deal with the
+// packing and unpacking of signed or unsigned values to and from reg
+// / ureg types
 
 #ifndef BITSTRM_UTILITYHPP_
 #define BITSTRM_UTILITYHPP_
@@ -20,7 +22,6 @@
 
 
 namespace  bitstrm { 
-
 
   // numeric_limits_signed
   // given bsize:{_min, _max} = {-(2^(n-1), 2^(n-1)-1 } 
@@ -75,9 +76,9 @@ namespace  bitstrm {
     //  (v < -1)  => (~v) << 1 | 1;
     // this '| 1' is a benign side effect of
     // raising negative numbers to odd value
-      
     ureg isNeg  = ((ureg) v) >> (c_register_bits-1);  // [0] -> 0, [2,3] -> 1 
-    ureg negMsk = ((reg)  v) >> (c_register_bits-1);  // [0] -> 0, [2,3] -> 0xFF..F
+    ureg negMsk = ((reg)  v) >> (c_register_bits-1);  // [0] -> 0,
+                                                      //   [2,3] -> 0xFF..F
       
     return (((((ureg)~v) & negMsk) | (((ureg)v) & ~negMsk))  << 1) | isNeg;
   }
@@ -100,35 +101,42 @@ namespace  bitstrm {
   // _ITR a != b, otherwise result would not be defined!
   template<typename _T>  ureg min_bits(_T val);
 
+////////////////////////////////////////////////////////////////////////////////        
   template<>
   inline ureg
   min_bits<unsigned int>      (unsigned int v)      {
-    return v ? static_cast<ureg>( (sizeof(unsigned)*CHAR_BIT)           - __builtin_clz (v))   : 0;
+    return v ? static_cast<ureg>( (sizeof(unsigned)*CHAR_BIT)
+                                  - __builtin_clz (v))   : 0;
   }
   template<>
   inline ureg
   min_bits<unsigned long >    (unsigned long v)     {
-    return v ? static_cast<ureg>( (sizeof(unsigned long)*CHAR_BIT)      - __builtin_clzl (v))  : 0;
+    return v ? static_cast<ureg>( (sizeof(unsigned long)*CHAR_BIT)
+                                  - __builtin_clzl (v))  : 0;
   }
   template<>
   inline ureg
   min_bits<unsigned long long>(unsigned long long v){
-    return v ? static_cast<ureg>( (sizeof(unsigned long long)*CHAR_BIT) - __builtin_clzll(v))  : 0;
+    return v ? static_cast<ureg>( (sizeof(unsigned long long)*CHAR_BIT)
+                                  - __builtin_clzll(v))  : 0;
   }
   template<>
   inline ureg
   min_bits<signed int>        (signed int v)        {
-    return v ? static_cast<ureg>( (sizeof(signed int)*CHAR_BIT)         - __builtin_clz  (bit_sign_adj(v))) : 0;
+    return v ? static_cast<ureg>( (sizeof(signed int)*CHAR_BIT)
+                                  - __builtin_clz  (bit_sign_adj(v))) : 0;
   }
   template<>
   inline ureg
   min_bits<signed long >      (signed long v)       {
-    return v ? static_cast<ureg>( (sizeof(signed  long)*CHAR_BIT)       - __builtin_clzl (bit_sign_adj(v))) : 0;
+    return v ? static_cast<ureg>( (sizeof(signed  long)*CHAR_BIT)
+                                  - __builtin_clzl (bit_sign_adj(v))) : 0;
   }
   template<>
   inline ureg
   min_bits<signed long long>  (signed long long v)  {
-    return v ? static_cast<ureg>( (sizeof(signed  long long)*CHAR_BIT)  - __builtin_clzll(bit_sign_adj(v))) : 0;
+    return v ? static_cast<ureg>( (sizeof(signed  long long)*CHAR_BIT)
+                                  - __builtin_clzll(bit_sign_adj(v))) : 0;
   }
     
   template<typename _ITR>
@@ -141,7 +149,6 @@ namespace  bitstrm {
     return min_bits(v);
   }  
 
-  
   // signextend
   //
   // http://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
@@ -167,8 +174,23 @@ namespace  bitstrm {
     return x;
   }
 
-    
+  // max_value_rlp
+  //
+  // given a specified bsize of prefix return the maximum
+  // value stored
+  inline constexpr ureg max_value_rlp(ureg bsize_prefix){
+    return 2*(( ureg(1) << ( (1 << bsize_prefix) - 1)) -1);
+  }
 
+  // bsize_rlp
+  //
+  // given the value an and the prefix size return the bsize of
+  // a rlp encoding
+  inline ureg bsize_rlp(ureg value,
+                        ureg bsize_prefix = (c_register_bit_addr_sz -1)){
+    return min_bits(value + 1) - 1 + bsize_prefix;
+  }
+  
 }
 
 

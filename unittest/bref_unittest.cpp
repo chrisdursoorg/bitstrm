@@ -395,5 +395,5 @@ BOOST_AUTO_TEST_CASE(documentation_example){
   bref begin = example_buf;
   example_buf.iwrite(min_bits(-4), -4); // write 3 bits encoding -4 to example_buf while advancing
   bref end = example_buf;               // now, encoded as a single signed integer, [begin, end) -> -4
-  assert(begin.read_reg(end-begin) == -4);
+  BOOST_CHECK(begin.read_reg(end-begin) == -4);
 }

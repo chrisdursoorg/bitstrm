@@ -19,7 +19,7 @@ namespace bitstrm {
   public:
 
     alloced_bref(ureg bsize){allocate(bsize);}
-    alloced_bref(){}
+    alloced_bref(){allocate(0);}
 
     // swap
     //

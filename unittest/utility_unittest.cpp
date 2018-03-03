@@ -206,14 +206,12 @@ BOOST_AUTO_TEST_CASE(bit_numeric_limits){
 
 
 BOOST_AUTO_TEST_CASE(rlp_table){
-  alloced_bref buf(128);
+  alloced_bref buf(64*2);
   stringstream out;
   out << "TABLE OF VALUES STORED IN RLP FORMAT VARYING PREFIX BITS" << endl
        << endl; 
   out << setw(5) << "PBITS" << setw(28) << "Q1[bits]" << setw(28) << "Q2[bits]"
       << setw(28) << "Q3[bits]" << setw(28) << "Q4[bits]" << endl;
-
-  auto r = bsize_rlp(6148914691236517204ULL, 6);
   
   for(unsigned i = 0 ; i <= c_register_bit_addr_sz; ++i){
     auto mv = max_value_rlp(i);
@@ -221,11 +219,11 @@ BOOST_AUTO_TEST_CASE(rlp_table){
     out << setw(5) << i;
     for(auto denom = 4; denom >= 1; --denom){
       auto v = mv/denom;
+      bref b = buf;
       bref e = buf;
       e.iwrite_rlp(v, i);
-      // BOOST_CHECK(true);
-      //BOOST_CHECK(e - buf == reg(bsize_rlp(v, i)));
-      BOOST_CHECK(buf.iread_rlp(i) == v);
+      BOOST_CHECK(e - b == reg(bsize_rlp(v, i)));
+      BOOST_CHECK(b.iread_rlp(i) == v);
       out << setw(22) << v << '[' << setw(4) << bsize_rlp(v, i) << ']';
     }
     out << endl;    

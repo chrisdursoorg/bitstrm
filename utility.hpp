@@ -17,6 +17,7 @@
 #include <utility>
 #include <algorithm>
 #include <iostream>
+#include <cassert>
 
 #include "bitstrm/reg.hpp"
 
@@ -187,7 +188,10 @@ namespace  bitstrm {
   // given the value an and the prefix size return the bsize of
   // a rlp encoding
   inline ureg bsize_rlp(ureg value,
-                        ureg bsize_prefix = (c_register_bit_addr_sz -1)){
+                        ureg bsize_prefix = c_register_bit_addr_sz){
+    assert(value <= max_value_rlp(bsize_prefix) &&
+           "capacity unsupported by prefix");
+
     return min_bits(value + 1) - 1 + bsize_prefix;
   }
   

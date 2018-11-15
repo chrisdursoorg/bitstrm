@@ -20,13 +20,13 @@ using namespace std;
 // This is another, albeit less performant, way to do bit_sign_adj
 template<typename _T>
 ureg
-bit_sign_adj_check(_T v, boost::false_type)  {
+bit_sign_adj_check(_T v, std::false_type)  {
   return v;
 }
 
 template<typename _T>
 ureg
-bit_sign_adj_check(_T v, boost::true_type /*meansIsReallySigned*/){
+bit_sign_adj_check(_T v, std::true_type /*meansIsReallySigned*/){
   if( v < -1) 
     return ~v << 1;
   else if( v > -1)
@@ -38,7 +38,7 @@ bit_sign_adj_check(_T v, boost::true_type /*meansIsReallySigned*/){
 template<typename _T>
 ureg
 bit_sign_adj_check(_T v) {
-  return bit_sign_adj_check(v, boost::is_signed<_T>());
+  return bit_sign_adj_check(v, std::is_signed<_T>());
 }
 
 

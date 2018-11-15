@@ -1,24 +1,29 @@
 cmake_minimum_required(VERSION 2.8)
 
-# CMAKE_BUILD_TYPE=[Release|Debug]
-
 enable_testing()
 
 project(bitstrm)
 
-################################################################################
-# *this directory should be bitstrm*
-#
-# then this repo can be built, in place as a submodule, or as an independent
-# build with an abritrary path
-#
-# in including '..' files within this project as root, all headers can be
-# prefaced with bitstrm (as #include "bitstrm/header_name.hpp";) and no
-# conflicts will arise 
-
 add_definitions("-std=c++11 -Wall -pedantic -Wall -Wextra")
 
-set (ROOT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+# Uncomment below if Boost is installed and you wish to use
+# or test bit_int_itr
+# set(USE_BOOST "TRUE")
+
+
+set(HEADER_FILES  ${CMAKE_CURRENT_SOURCE_DIR}/bitstrm)
+
+add_library(${PROJECT_NAME} INTERFACE)
+target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${HEADER_FILES}>)
+target_include_directories(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/bitstrm/>)
+target_include_directories(${PROJECT_NAME} SYSTEM INTERFACE $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/bitstrm>)
+
+set (ROOT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(unittest)
 add_subdirectory(examples)
+
+install(CODE "MESSAGE(\"Header only library Installing to ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}. \")")
+
+install(DIRECTORY bitstrm DESTINATION include)
+#install(TARGETS "${PROJECT_NAME}" PUBLIC_HEADER DESTINATION include)

@@ -1,30 +1,33 @@
 cmake_minimum_required(VERSION 3.2.2)
 
-set(TEST                       
-        bref_unittest.cpp
-	reg_unittest.cpp
-	utility_unittest.cpp   
-        bitstrm_unittest.cpp 
-        bit_int_itr_unittest.cpp
-)
+# Unittest framework dependent on boost
 
-find_package(Boost 1.4 COMPONENTS unit_test_framework)
+if("${USE_BOOST}")
 
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-include_directories("${ROOT_INCLUDE}")
+	set(TEST                       
+	   bref_unittest.cpp
+	   reg_unittest.cpp
+	   utility_unittest.cpp   
+           bitstrm_unittest.cpp 
+	   )
 
-# Run through each source
-foreach(TEST_SRC ${TEST})
-	
-        #Extract the filename without an extension (NAME_WE)
-        get_filename_component(TEST_NAME ${TEST_SRC} NAME_WE)
 
-        add_executable(${TEST_NAME} ${TEST_SRC})
+	find_package(Boost 1.4 COMPONENTS unit_test_framework)
+	include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+	include_directories("${ROOT_INCLUDE}")
 
-        target_link_libraries(${TEST_NAME} ${Boost_LIBRARIES})
+	# Run through each source
+	foreach(TEST_SRC ${TEST})	
+           #Extract the filename without an extension (NAME_WE)
+           get_filename_component(TEST_NAME ${TEST_SRC} NAME_WE)
 
-        add_test( NAME ${TEST_NAME} 
+           add_executable(${TEST_NAME} ${TEST_SRC})
+
+           target_link_libraries(${TEST_NAME} ${Boost_LIBRARIES})
+
+           add_test( NAME ${TEST_NAME} 
 		  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
            	 )
-endforeach(TEST_SRC)
+	endforeach(TEST_SRC)
+endif("${USE_BOOST}")

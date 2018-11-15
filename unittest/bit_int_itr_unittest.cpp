@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways_boost_style )
   bit_int_itr<bitSz, ureg> bc(p2);
   bit_int_itr<bitSz, ureg> be(pe);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
+  for_each(container.begin(), container.end(), [&p](containerType::value_type value) { p.iwrite(bitSz, value); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
   BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);

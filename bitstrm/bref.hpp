@@ -113,7 +113,7 @@ namespace bitstrm {
     // ilzrun
     // scan from current bref and return number of leading zeros prior to binary 1
     // This function is well defined for leading zeros < sizeof(reg)*CHAR_BIT
-    // ilzrun variant increments bref
+    // ilzrun variant increments bref through first binary 1
     unsigned lzrun()const {bref t(*this); return t.ilzrun(); }
     unsigned ilzrun();
 

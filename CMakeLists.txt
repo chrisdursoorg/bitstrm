@@ -7,7 +7,7 @@ project(bitstrm)
 add_definitions("-std=c++11 -Wall -pedantic -Wall -Wextra")
 
 # Uncomment below if Boost is installed and you wish to use
-# or test bit_int_itr
+# unittest or bit_int_itr
 # set(USE_BOOST "TRUE")
 
 

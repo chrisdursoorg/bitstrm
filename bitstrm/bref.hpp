@@ -60,17 +60,18 @@ namespace bitstrm {
     bref  operator--(int);
 
 
-    // run length specified encoding rls/rlp [r]un [l]ength
-    // [s]pecified or [p]refaced codecs
+    // run length specified encoding rls/rlp/rlup [r]un [l]ength
+    // [s]pecified, [p]refaced codecs, or [up] unary preferenced
     //
     // a little counter intuitive run length specified maps integers
     // in prefix + (2^(*prefix)-1) bits, or mapping the values
     // [0, 2^(tbits-prefix) -2]
     //
-    // See 
+    // See table at bottom, rlp_bsize and rlup_bsize for ranges of values
+    // acheivable for differing number of bits
 
     
-    // [i]read_{reg,ureg},iread_rls,iread_rlp}
+    // [i]read_{reg,ureg},iread_rls,iread_rlp, iread_rlup}
     // 
     // read from bitstrm bsize bits, interpreting (is_signed<INT_TYPE>)
     // and returning them as appropriate type
@@ -87,6 +88,8 @@ namespace bitstrm {
     ureg iread_ureg(unsigned bsize);
     ureg iread_rls (unsigned specific_bsize);
     ureg iread_rlp (unsigned max_of_prefix = c_register_bit_addr_sz);
+    ureg iread_rlup();
+
     template<typename INT_TYPE>
     INT_TYPE read_as(unsigned bsize) const;
     template<typename INT_TYPE> 
@@ -108,7 +111,10 @@ namespace bitstrm {
     void iwrite_rls(ureg value, unsigned bsize_value);
     void iwrite_rlp(ureg value,
                     unsigned max_run_length_bits = c_register_bit_addr_sz);
-    static ureg write_rlp_bsize(ureg value, unsigned max_prefix = c_register_bit_addr_sz);
+    void iwrite_rlup(ureg value);
+
+    static ureg rlp_bsize (ureg value, unsigned prefix_bits = c_register_bit_addr_sz);
+    static ureg rlup_bsize(ureg value);
     
     // ilzrun
     // scan from current bref and return number of leading zeros prior to binary 1

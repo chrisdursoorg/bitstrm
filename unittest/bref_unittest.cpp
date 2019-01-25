@@ -342,7 +342,9 @@ BOOST_AUTO_TEST_CASE(read_write_rlp_bigger){
   bref     beg = buf;
 
   for(unsigned i = 0; i < high_value; ++i ){
+    bref orig = buf;
     buf.iwrite_rlp(i, max_address);
+    BOOST_CHECK(ureg(buf - orig) == bref::rlp_bsize(i, max_address));
   }
 
   stringstream str;
@@ -357,36 +359,36 @@ BOOST_AUTO_TEST_CASE(read_write_rlp_bigger){
 }
 
 
-  BOOST_AUTO_TEST_CASE(example_0){
-    alloced_bref alloc0(3);            // what can you do with 3 bits?
-    bref p0 = alloc0;                  // make some 'pointers'
-    bref p1 = p0;
-    BOOST_CHECK(p0 == p1);             // pointers allign
-    p0.iwrite(3, 6);                   // write small unsigned value 6, incrementing p0
-    BOOST_CHECK(p0 > p1);              // p0 past p1
-    BOOST_CHECK(p0 - p1 == 3);         // by 3 bits
-    swap(p0, p1);                      // lets reorder our references
-    BOOST_CHECK(p0.read_ureg(3) == 6); // recover value
-    alloced_bref alloc1(60);           // 20 times is actually the same because underneath its a 64 bit integer
-    BOOST_CHECK(alloc0 != alloc1);     // don't know where alloc1 is wrt alloc0 but its not the same
-    bref p2 = alloc1;
-    bref p3 = copy(p0, p1, p2);        // copy the underlying bits 
-    BOOST_CHECK(p3 - p2 == 3);         // (all three of them)
-    BOOST_CHECK(p0.read_ureg(3) == p2.read_ureg(3)); // of course value got copied
-    // three bits as signed can store {-4, -3, -2, -1, 0, 1, 2, 3}
-    p0.write(3, -2);                   // store -2 into alloc0
-    BOOST_CHECK(p0.read_reg(3) == -2); // writing implicity gets sign correct, but for reading you must specifiy how to interpret underlying bits
-    BOOST_CHECK(p0.read_reg(3) == p2.read_reg(3)); // what gives?! while -2 != 6, -2 == reg(6) when your register is 3-bit
-    // back to the world of whole numbers, the subset of those of size must be 3 bits width, whats the maximum value you can store? 
-    p0.write(3, 7 /*or 0b111*/);
-    BOOST_CHECK(bref(p0).iread_rls(3) == 14); // kind of strange, nothing to do with dance around temporary object
-    p2.write(3, 0 /*or 0b000*/);              // here's a hint 
-    BOOST_CHECK(bref(p2).iread_rls(3) == 7);  // the minimum value is not zero but 7
-    BOOST_CHECK(bref(p2).iread_rls(0) == 0);  // note also zero takes *0* bits to store,  or {0}
-    BOOST_CHECK(bref(p0).iread_rls(2) == 6 && bref(p2).iread_rls(2) == 3); // max respectivly at each bit size
-    BOOST_CHECK(bref(p0).iread_rls(1) == 2 && bref(p2).iread_rls(1) == 1);
-    // or {0}{1, 2}{3, 4, 5, 6}{7, 8, 9, 10, 11, 12, 13, 14}, where we have the ranges of 0, 1, 2, and 3 bits
-  }
+BOOST_AUTO_TEST_CASE(example_0){
+  alloced_bref alloc0(3);            // what can you do with 3 bits?
+  bref p0 = alloc0;                  // make some 'pointers'
+  bref p1 = p0;
+  BOOST_CHECK(p0 == p1);             // pointers allign
+  p0.iwrite(3, 6);                   // write small unsigned value 6, incrementing p0
+  BOOST_CHECK(p0 > p1);              // p0 past p1
+  BOOST_CHECK(p0 - p1 == 3);         // by 3 bits
+  swap(p0, p1);                      // lets reorder our references
+  BOOST_CHECK(p0.read_ureg(3) == 6); // recover value
+  alloced_bref alloc1(60);           // 20 times is actually the same because underneath its a 64 bit integer
+  BOOST_CHECK(alloc0 != alloc1);     // don't know where alloc1 is wrt alloc0 but its not the same
+  bref p2 = alloc1;
+  bref p3 = copy(p0, p1, p2);        // copy the underlying bits 
+  BOOST_CHECK(p3 - p2 == 3);         // (all three of them)
+  BOOST_CHECK(p0.read_ureg(3) == p2.read_ureg(3)); // of course value got copied
+  // three bits as signed can store {-4, -3, -2, -1, 0, 1, 2, 3}
+  p0.write(3, -2);                   // store -2 into alloc0
+  BOOST_CHECK(p0.read_reg(3) == -2); // writing implicity gets sign correct, but for reading you must specifiy how to interpret underlying bits
+  BOOST_CHECK(p0.read_reg(3) == p2.read_reg(3)); // what gives?! while -2 != 6, -2 == reg(6) when your register is 3-bit
+  // back to the world of whole numbers, the subset of those of size must be 3 bits width, whats the maximum value you can store? 
+  p0.write(3, 7 /*or 0b111*/);
+  BOOST_CHECK(bref(p0).iread_rls(3) == 14); // kind of strange, nothing to do with dance around temporary object
+  p2.write(3, 0 /*or 0b000*/);              // here's a hint 
+  BOOST_CHECK(bref(p2).iread_rls(3) == 7);  // the minimum value is not zero but 7
+  BOOST_CHECK(bref(p2).iread_rls(0) == 0);  // note also zero takes *0* bits to store,  or {0}
+  BOOST_CHECK(bref(p0).iread_rls(2) == 6 && bref(p2).iread_rls(2) == 3); // max respectivly at each bit size
+  BOOST_CHECK(bref(p0).iread_rls(1) == 2 && bref(p2).iread_rls(1) == 1);
+  // or {0}{1, 2}{3, 4, 5, 6}{7, 8, 9, 10, 11, 12, 13, 14}, where we have the ranges of 0, 1, 2, and 3 bits
+}
 
 
 BOOST_AUTO_TEST_CASE(documentation_example){
@@ -396,4 +398,57 @@ BOOST_AUTO_TEST_CASE(documentation_example){
   example_buf.iwrite(min_bits(-4), -4); // write 3 bits encoding -4 to example_buf while advancing
   bref end = example_buf;               // now, encoded as a single signed integer, [begin, end) -> -4
   BOOST_CHECK(begin.read_reg(end-begin) == -4);
+}
+
+BOOST_AUTO_TEST_CASE(rlup_format){
+  // run length unary preface works well with small numbers
+ 
+  constexpr int top = 129;
+  ureg bsize = 0;
+  for(int i = 0; i < top; bsize += bref::rlup_bsize(i++));
+  alloced_bref buf(bsize);
+  bref cur = buf;
+  for(int i = 0; i < top; ++i)
+    cur.iwrite_rlup(i);
+  
+  BOOST_CHECK(bsize == ureg(cur - buf));
+
+  cur = buf;
+  
+  for(unsigned i = 0; i < top; ++i)
+    BOOST_CHECK(cur.iread_rlup() == i);
+
+  BOOST_CHECK(bsize = ureg(cur - buf));
+}
+
+
+BOOST_AUTO_TEST_CASE(rlp_v_rlup_format){
+ 
+  // find the max values at each bitsize (at odd number sizes), specifically adding one bit to preface allows for 1 more bit on suffix
+  stringstream out;
+  alloced_bref buf(128); // allocate 'a whole lot' of bits
+  for(int pref = 1; pref <= 32; ++pref){
+    bref b = buf;
+    b.iwrite(pref, 1);
+    b.iwrite(pref-1, ureg(-1));
+    bref d  = buf;
+    out << "preface size: " << pref << " total bits: " << 2*pref -1 <<  " largest value: " << d.iread_rlup() << endl;
+  }
+  BOOST_TEST_MESSAGE(out.str());
+  out.str("");
+  out << "range where rulp is most effective is small, simple lz encoding is more effective for smaller (and tigher) valued distributions and rlp is better where the prefix size is bound" << endl;
+  for(unsigned prefix_bits = 2; prefix_bits <= 6; ++prefix_bits){
+    unsigned i = 2;
+    while( (i  <=  (min_bits( 1 << prefix_bits) -1)) && (bref::rlup_bsize(i) <= bref::rlp_bsize(i, prefix_bits))){
+      out << "prefix: " << prefix_bits << " i: " << i << " rlup: " << bref::rlup_bsize(i) << " rlp: " << bref::rlp_bsize(i, prefix_bits) << endl;
+      i++;
+      }
+
+    out << "prefix bsize: " << prefix_bits;
+    if (i  <=  (min_bits( 1 << prefix_bits) -1))
+      out << " we run out of prefix bits" << endl;
+    else
+      out << " value where rlp is more efficient than rlup " << (i - 1) << endl;
+  }
+  BOOST_TEST_MESSAGE(out.str());
 }

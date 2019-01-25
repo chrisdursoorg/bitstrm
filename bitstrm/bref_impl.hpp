@@ -129,6 +129,11 @@ bref::iread_rlp(unsigned prefix_bits){
   return iread_rls(suff_bits);
 }
 
+inline ureg
+bref::iread_rlup(){
+  return iread_rls(ilzrun());
+}
+
 inline void
 bref::iwrite_rls(ureg value, unsigned bsize){
   ureg base = (ureg(1) << bsize) - 1;
@@ -142,15 +147,26 @@ bref::iwrite_rlp(ureg value, unsigned prefix_bits){
   iwrite_rls(value, suffix_bits);
 }
 
-#if 1
+inline void
+bref::iwrite_rlup(ureg value){
+  ureg suffix_bits = min_bits(value + 1) - 1;
+  iwrite(suffix_bits + 1, 1);
+  iwrite_rls(value, suffix_bits);
+}
+
 /*static*/
 inline ureg
-bref::write_rlp_bsize(ureg value,
-                      unsigned max_run_length_bits){
-  ureg bits = min_bits(value + 1) - 1;
-  return bits + max_run_length_bits;
+bref::rlp_bsize(ureg value, unsigned max_run_length_bits){
+  ureg suffix_bits = min_bits(value + 1) - 1;
+  return suffix_bits + max_run_length_bits;
 }
-#endif
+
+/*static*/
+inline ureg
+bref::rlup_bsize(ureg value){
+  ureg suffix_bits = min_bits(value + 1) - 1;
+  return 2*suffix_bits + 1;
+}
 
 // READ AND WRITE GENERIC END
 

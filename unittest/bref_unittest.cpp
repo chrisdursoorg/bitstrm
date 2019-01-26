@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE(read_write_rlp_bigger){
   for(unsigned i = 0; i < high_value; ++i ){
     bref orig = buf;
     buf.iwrite_rlp(i, max_address);
-    BOOST_CHECK(ureg(buf - orig) == bref::rlp_bsize(i, max_address));
+    BOOST_CHECK(ureg(buf - orig) == bsize_rlp(i, max_address));
   }
 
   stringstream str;
@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_CASE(rlup_format){
  
   constexpr int top = 129;
   ureg bsize = 0;
-  for(int i = 0; i < top; bsize += bref::rlup_bsize(i++));
+  for(int i = 0; i < top; bsize += bsize_rlup(i++));
   alloced_bref buf(bsize);
   bref cur = buf;
   for(int i = 0; i < top; ++i)
@@ -439,8 +439,8 @@ BOOST_AUTO_TEST_CASE(rlp_v_rlup_format){
   out << "range where rulp is most effective is small, simple lz encoding is more effective for smaller (and tigher) valued distributions and rlp is better where the prefix size is bound" << endl;
   for(unsigned prefix_bits = 2; prefix_bits <= 6; ++prefix_bits){
     unsigned i = 2;
-    while( (i  <=  (min_bits( 1 << prefix_bits) -1)) && (bref::rlup_bsize(i) <= bref::rlp_bsize(i, prefix_bits))){
-      out << "prefix: " << prefix_bits << " i: " << i << " rlup: " << bref::rlup_bsize(i) << " rlp: " << bref::rlp_bsize(i, prefix_bits) << endl;
+    while( (i  <=  (min_bits( 1 << prefix_bits) -1)) && (bsize_rlup(i) <= bsize_rlp(i, prefix_bits))){
+      out << "prefix: " << prefix_bits << " i: " << i << " rlup: " << bsize_rlup(i) << " rlp: " << bsize_rlp(i, prefix_bits) << endl;
       i++;
       }
 

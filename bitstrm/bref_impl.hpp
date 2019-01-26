@@ -154,20 +154,6 @@ bref::iwrite_rlup(ureg value){
   iwrite_rls(value, suffix_bits);
 }
 
-/*static*/
-inline ureg
-bref::rlp_bsize(ureg value, unsigned max_run_length_bits){
-  ureg suffix_bits = min_bits(value + 1) - 1;
-  return suffix_bits + max_run_length_bits;
-}
-
-/*static*/
-inline ureg
-bref::rlup_bsize(ureg value){
-  ureg suffix_bits = min_bits(value + 1) - 1;
-  return 2*suffix_bits + 1;
-}
-
 // READ AND WRITE GENERIC END
 
 

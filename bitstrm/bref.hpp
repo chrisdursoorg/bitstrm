@@ -113,9 +113,6 @@ namespace bitstrm {
                     unsigned max_run_length_bits = c_register_bit_addr_sz);
     void iwrite_rlup(ureg value);
 
-    static ureg rlp_bsize (ureg value, unsigned prefix_bits = c_register_bit_addr_sz);
-    static ureg rlup_bsize(ureg value);
-    
     // ilzrun
     // scan from current bref and return number of leading zeros prior to binary 1
     // This function is well defined for leading zeros < sizeof(reg)*CHAR_BIT

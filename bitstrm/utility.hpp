@@ -195,8 +195,12 @@ namespace  bitstrm {
     return min_bits(value + 1) - 1 + bsize_prefix;
   }
   
+
+  inline ureg bsize_rlup(ureg value){
+  ureg suffix_bits = min_bits(value + 1) - 1;
+  return 2*suffix_bits + 1;
+  }
+
 }
-
-
 
 #endif // def'd BITLIB_UTILITYHPP_

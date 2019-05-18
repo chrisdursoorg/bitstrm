@@ -4,7 +4,6 @@
 #define BITSTRM_BREF_HPP
 
 #include <cassert>
-#include <boost/mpl/assert.hpp>
 #include "bitstrm/utility.hpp"
 
 
@@ -63,9 +62,9 @@ namespace bitstrm {
     // run length specified encoding rls/rlp/rlup [r]un [l]ength
     // [s]pecified, [p]refaced codecs, or [up] unary preferenced
     //
-    // a little counter intuitive run length specified maps integers
-    // in prefix + (2^(*prefix)-1) bits, or mapping the values
-    // [0, 2^(tbits-prefix) -2]
+    // run length specified maps integers with specified or listed
+    // as in [prefix]{(2^(*prefix)-1)} bits, values of 
+    // [0, 2^(total_bits-prefix) -2]
     //
     // See table at bottom, rlp_bsize and rlup_bsize for ranges of values
     // acheivable for differing number of bits
@@ -82,6 +81,7 @@ namespace bitstrm {
     //    + read_as for further template specialization based upon {reg, ureg}
     //    + rls (described above) 
     //    + rlp (descroned above)
+    //    + rlup (described above)
     reg  read_reg  (unsigned bsize) const; 
     ureg read_ureg (unsigned bsize) const;
     reg  iread_reg (unsigned bsize);
@@ -106,6 +106,7 @@ namespace bitstrm {
     //      will restore
     //    + rls (described above) NOTE INCONSISTENCY IN PARAMETER ORDER
     //    + rlp (described above) NOTE INCONSISTENCY IN PARAMETER ORDER
+    //    + rlup (described above) 
     void write     (unsigned bsize, ureg value) const;
     void iwrite    (unsigned bsize, ureg value);
     void iwrite_rls(ureg value, unsigned bsize_value);

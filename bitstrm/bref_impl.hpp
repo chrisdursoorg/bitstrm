@@ -96,14 +96,13 @@ bref::read_as   (unsigned bsize)const{
   bref t(*this); return t.iread_as<INT_TYPE>(bsize);
 }
 
-// generic throws static assertion only allowed are reg and ureg
+#if 0
 template<typename INT_TYPE> 
 inline INT_TYPE
 bref::iread_as  (unsigned ){
-  BOOST_MPL_ASSERT_MSG(sizeof(INT_TYPE)==0,
-                       ONLY_TYPES_REG_UREG_ALLOWED, (void) );
-}    
-
+  static_assert(false, "only reg/ureg types permitted");
+}
+#endif
 
 template<> reg
 inline bref::iread_as(unsigned bsize){ return iread_as_impl<reg>(bsize);}

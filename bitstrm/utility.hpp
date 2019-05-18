@@ -12,8 +12,6 @@
 #include <limits.h>
 #include <limits>
 #include <type_traits>
-#include <boost/type_traits/is_signed.hpp>
-#include <boost/type_traits/is_integral.hpp>
 #include <utility>
 #include <algorithm>
 #include <iostream>
@@ -66,10 +64,10 @@ namespace  bitstrm {
   // for signed bit space Always valid, e.g. {max,min} signed int will
   // result in word number of bits, 0->0, etc.
   template<typename _T>
-  inline ureg bit_sign_adj(_T v, boost::false_type)  { return v;}
+  inline ureg bit_sign_adj(_T v, std::false_type)  { return v;}
 
   template<typename _T>
-  inline ureg bit_sign_adj(_T v, boost::true_type) { 
+  inline ureg bit_sign_adj(_T v, std::true_type) { 
     // LOGIC TABLE, note we only care about msb
     //  GIVEN        RETURN
     //   v >= 0   => v << 1;
@@ -85,7 +83,7 @@ namespace  bitstrm {
   }
     
   template<typename _T> inline ureg bit_sign_adj(_T v) {
-    return bit_sign_adj(v, boost::is_signed<_T>());
+    return bit_sign_adj(v, std::is_signed<_T>());
   }
 
   // min bits
@@ -166,12 +164,12 @@ namespace  bitstrm {
     
   template<typename T, unsigned BIT_COUNT>
   inline T
-  signextend(const T x, boost::true_type){
+  signextend(const T x, std::true_type){
     return signextend<T, BIT_COUNT>(x);
   }
   
   template<typename T, unsigned BIT_COUNT>
-    inline T signextend (const T x, boost::false_type){
+    inline T signextend (const T x, std::false_type){
     return x;
   }
 

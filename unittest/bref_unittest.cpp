@@ -452,3 +452,68 @@ BOOST_AUTO_TEST_CASE(rlp_v_rlup_format){
   }
   BOOST_TEST_MESSAGE(out.str());
 }
+
+
+BOOST_AUTO_TEST_CASE(advance_test){
+
+  constexpr unsigned example_size = 1234567;
+  alloced_bref example(example_size);
+
+  bref           end   = example + example_size;
+  example.zero();
+  for(int i = 0; i < 32; ++i )
+    (example + 2*i).iwrite(1, 1);
+
+  
+  BOOST_CHECK(advance(example, 0) == example);
+  BOOST_CHECK(advance(example, end, 0) == example);
+
+  BOOST_CHECK(advance(example, 1) == (example + 2));
+  BOOST_CHECK(advance(example, end, 1) == (example + 2));
+
+  BOOST_CHECK(advance(example, 2) == (example + 4));
+  BOOST_CHECK(advance(example, end, 2) == (example + 4));
+
+  BOOST_CHECK(advance(example, end, 100) == end);
+
+  for(int i = 0; i < 31; ++i){
+    BOOST_CHECK(advance(example, i) == (example + i*2));
+    BOOST_CHECK(advance(example, end, i) == (example + i*2));
+  }
+
+  BOOST_CHECK(advance(example, end, 32) == end);
+
+  (example + (example_size - 2)).iwrite(1,1);
+  BOOST_CHECK(advance(example, end, 32) != end);
+  BOOST_CHECK(advance(example, end, 32) == (end-2));
+  
+}
+
+BOOST_AUTO_TEST_CASE(popcount_simple){
+  constexpr unsigned example_size = 1024;
+  alloced_bref example(example_size);
+  bref end = example + example_size;
+  example.zero();
+  example.write(1,1);
+  BOOST_CHECK(popcount(example, end) == 1);
+  (example+512).iwrite(1,1);
+  BOOST_CHECK(popcount(example, end) == 2);
+}
+
+BOOST_AUTO_TEST_CASE(popcount_test){
+
+  // maximally fill  elements one at a time and see that indeed it adds to the popcount
+  constexpr unsigned example_size = 2057;
+  alloced_bref example(example_size);
+  example.zero();
+  bref end = example + example_size;
+
+  set<unsigned> pile;
+  for(unsigned i = 0; i < example_size; ++i){
+    ureg element = (i*1027)%example_size;
+    pile.insert(element);
+    (example + element).iwrite(1,1);
+    BOOST_CHECK(popcount(example, end) == (i+1));
+  }
+  assert(pile.size() == example_size && "set should be completely covered");
+}

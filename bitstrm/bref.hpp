@@ -176,6 +176,10 @@ namespace bitstrm {
 
     template<typename _INT_TYPE> _INT_TYPE iread_as_impl(unsigned bitSz);
 
+    friend ureg popcount(bref, bref);
+    friend bref advance (bref, bref, ureg);
+    friend bref advance (bref, ureg);
+
   }; // struct bref
   
   inline reg operator-(const bref& lhs, const bref& rhs){
@@ -187,6 +191,17 @@ namespace bitstrm {
     return lhs;
   }
 
+  // algorithms ///////////////////////////////////////////////////////////////
+  //
+  // also see bitstm utility.hpp for signed/unsigned integer opterations 
+
+  // advance
+  //
+  // return advanced bref to the ord(th) value, else to end
+  // end(less) version is well defined when ord count of bits in range
+  bref advance(bref beg, bref end, ureg ord);
+  bref advance(bref beg, ureg ord);
+
   // copy
   // 
   // copys the bits from [begin, end) into the range begining with result
@@ -197,6 +212,12 @@ namespace bitstrm {
   // 
   // for [begin, end) return true if equivalent to [second, second + end - begin)  
   bool equal(bref begin, bref end, bref second);
+
+  // popcount
+  //
+  // population count of ones in [beg, end), O(ones) complexity
+  ureg popcount(bref beg, bref end);
+
 
 # include "bitstrm/bref_impl.hpp"
   

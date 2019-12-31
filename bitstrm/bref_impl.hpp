@@ -1,6 +1,6 @@
 // bref_impl.hpp
 //
-// NOT INTENDED FOR DIRECT REFERENE -- IMPLEMATION ONLY
+// NOT INTENDED FOR DIRECT REFERENCE -- IMPLEMATION ONLY
 
 
 // OPERATORS BEGIN
@@ -234,8 +234,6 @@ bref::iwrite(unsigned bsize, ureg value){
 
 // READ WRITE END
 
-// MISC HELPER BEGIN
-
 
 /*static*/
 inline reg
@@ -268,7 +266,7 @@ template<>
 inline uint64_t op_clz<uint64_t>(uint64_t i ){ return __builtin_clzll(i); }
 
 template<>
-inline uint32_t op_clz<uint32_t>(uint32_t i){ return __builtin_clz(i); } 
+inline uint32_t op_clz<uint32_t>(uint32_t i ){ return __builtin_clz(i); } 
 
 inline unsigned
 bref::ilzrun(){
@@ -302,15 +300,14 @@ bref::ilzrun(){
 
 // TODO: copy/equal optimization! two things to manage
 // 0) begin/end bits,
-// 1) intra byte allignment
-// perhaps reg_bits/2 atom, or possibly have an "bit-alligned"
-// special case 
+// 1) intra word allignment
+// perhaps half register operation and "bit-alligned" special case 
 //
 inline 
 bref 
-copy(bref begin, bref last, bref result){
+copy(bref begin, bref end, bref result){
   
-  reg size = bref::subtract(last, begin);
+  reg size = bref::subtract(end, begin);
   for(;size >= c_register_bits; size -= c_register_bits)
     result.iwrite(c_register_bits, begin.iread_ureg(c_register_bits));
 
@@ -336,4 +333,71 @@ equal(bref begin, bref last, bref second){
   return true;
 }
 
-// MISC HELPER END
+
+template<class WORD> struct pop_count_cmd;
+
+template<> struct pop_count_cmd<unsigned>{
+  static ureg f(ureg x){ return __builtin_popcount(x); }
+};
+
+template<> struct pop_count_cmd<unsigned long>{
+  static ureg f(ureg x){ return __builtin_popcountl(x); }
+};
+
+template<> struct pop_count_cmd<unsigned long long>{
+  static ureg f(ureg x){ return __builtin_popcountll(x); }
+};
+
+template<class WORD> struct pop_count_cmd{
+  // compilter error here indicates popcount builtin unavailable for ureg type
+};
+
+
+inline 
+ureg
+popcount(bref cur, bref end){
+  ureg count = 0;
+
+  // lead
+  for(;cur.m_off != 0; ++cur){
+    if(cur == end)
+      return count;
+    if(*cur)
+      ++count;
+  }
+
+  // mid -- the optimization -- as long as on a clean mid register use builtin
+  for(;cur.m_addr != end.m_addr; ++cur.m_addr)
+    count += pop_count_cmd<ureg>::f(*cur.m_addr);
+
+  // tail
+  for(;cur != end; ++cur)
+    if(*cur)
+      ++count;
+  
+  return count;
+}
+
+// advance
+//
+// advance forward to the ord(th) set bit value else end
+// end(less) version is well defined when ord count of bits in defined
+//
+// Performance - perhaps should special case out advance 1 with clz implementation
+
+inline bref advance(bref cur, bref end, ureg ord){
+  for(;cur != end and ord != 0; ++cur)
+    if(*(cur+1))
+      --ord;
+  
+  return cur;
+}
+
+inline bref advance(bref cur, ureg ord){
+  for(;ord != 0; ++cur)
+    if(*(cur+1))
+      --ord;
+
+  return cur;
+}
+

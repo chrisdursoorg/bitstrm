@@ -259,14 +259,19 @@ bref::norm_overflow_underflow(reg d){
 }
 
 
+// clz
+//
+// Count leading zero's.  Zero returns the number of bits in the register.
+
 template<typename _BASE>
 inline _BASE op_clz(_BASE);
 
 template<>
-inline uint64_t op_clz<uint64_t>(uint64_t i ){ return __builtin_clzll(i); }
+inline uint64_t op_clz<uint64_t>(uint64_t i ){ return i ? __builtin_clzll(i): 64; }
 
 template<>
-inline uint32_t op_clz<uint32_t>(uint32_t i ){ return __builtin_clz(i); } 
+inline uint32_t op_clz<uint32_t>(uint32_t i ){ return i ? __builtin_clz(i): 32; } 
+
 
 inline unsigned
 bref::ilzrun(){
@@ -274,10 +279,10 @@ bref::ilzrun(){
   // first shift left so pos[+0] is MSB
   ureg  cur(endian_adj(*m_addr) << m_off);
   
-  unsigned  run = op_clz<ureg>(cur);
-  unsigned compliment(unsigned(c_register_bits - m_off));
+  unsigned run       = op_clz<ureg>(cur);
+  unsigned remaining = unsigned(c_register_bits - m_off);
   
-  if( run < compliment ){
+  if( run < remaining ){
     // count complete on current register
     m_off += run + 1;
     norm();
@@ -285,7 +290,7 @@ bref::ilzrun(){
   }
   
   // must continue to further registers
-  run = compliment;
+  run = remaining;
   unsigned locRun;
   do {
     locRun = op_clz<ureg>(endian_adj(*(++m_addr)));
@@ -297,6 +302,7 @@ bref::ilzrun(){
   return run;
 }
 
+///////////////////////////////////////////////////////////////////////////////////
 
 // TODO: copy/equal optimization! two things to manage
 // 0) begin/end bits,
@@ -333,23 +339,49 @@ equal(bref begin, bref last, bref second){
   return true;
 }
 
+inline bref
+lzrun(bref beg, bref end){
+  
+  // first shift left so pos[+0] is MSB
+  ureg  cur(endian_adj(*beg.m_addr) << beg.m_off);
+  
+  unsigned  run      = op_clz<ureg>(cur);
+  unsigned remaining = unsigned(c_register_bits - beg.m_off);
+  
+  if( run < remaining ){
+    // count complete on current register, return the smaller of that mark and end
+    bref r = beg + run;
+    return std::min(r, end);
+  }
+  
+  // must continue to further registers
+  run = remaining;
+  unsigned locRun;
+  reg* addr = beg.m_addr;
+  do {
+    locRun = op_clz<ureg>(endian_adj(*(++addr)));
+    run  += locRun;
+  } while(locRun == c_register_bits and addr < end.m_addr);  
+
+  return std::min(beg + run, end);
+}
 
 template<class WORD> struct pop_count_cmd;
 
 template<> struct pop_count_cmd<unsigned>{
-  static ureg f(ureg x){ return __builtin_popcount(x); }
+  static ureg op(ureg x){ return __builtin_popcount(x); }
 };
 
 template<> struct pop_count_cmd<unsigned long>{
-  static ureg f(ureg x){ return __builtin_popcountl(x); }
+  static ureg op(ureg x){ return __builtin_popcountl(x); }
 };
 
 template<> struct pop_count_cmd<unsigned long long>{
-  static ureg f(ureg x){ return __builtin_popcountll(x); }
+  static ureg op(ureg x){ return __builtin_popcountll(x); }
 };
 
 template<class WORD> struct pop_count_cmd{
-  // compilter error here indicates popcount builtin unavailable for ureg type
+  // compilter error here indicates popcount builtin uspecified for ureg type
 };
 
 
@@ -368,7 +400,7 @@ popcount(bref cur, bref end){
 
   // mid -- the optimization -- as long as on a clean mid register use builtin
   for(;cur.m_addr != end.m_addr; ++cur.m_addr)
-    count += pop_count_cmd<ureg>::f(*cur.m_addr);
+    count += pop_count_cmd<ureg>::op(*cur.m_addr);
 
   // tail
   for(;cur != end; ++cur)

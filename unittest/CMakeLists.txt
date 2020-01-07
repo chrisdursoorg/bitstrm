@@ -7,6 +7,7 @@ if("${USE_BOOST}")
 	set(TEST                       
 	   bref_unittest.cpp
 	   reg_unittest.cpp
+	   print_unittest.cpp
 	   utility_unittest.cpp   
            bitstrm_unittest.cpp 
 	   )

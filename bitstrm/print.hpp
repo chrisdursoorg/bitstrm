@@ -14,7 +14,15 @@
 
 namespace bitstrm {
 
-  inline std::ostream&
+
+  inline
+  std::ostream&
+  bref::print()const{
+    return print(std::cout);
+  }
+  
+  inline
+  std::ostream&
   bref::print(std::ostream& dest)const{    
     std::ios_base::fmtflags restore = dest.setf(std::ios::hex, std::ios::basefield);
     dest << std::hex << m_addr;
@@ -22,15 +30,18 @@ namespace bitstrm {
     dest.setf(restore);
     return dest;
   }
+  
+  inline
+  std::ostream&
+  print(std::ostream& out, bref cur, bref end){
 
-  #if 0
-  inline std::string
-  bref::print()const{
-    std::stringstream str;
-    print(str);
-    return str.str();
+    out << 'b';
+    for(; cur != end;)
+      out << cur.iread_ureg(1);
+      
+    return out;
   }
-  #endif
+  
   
 }
 

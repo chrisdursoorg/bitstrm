@@ -194,6 +194,22 @@ BOOST_AUTO_TEST_CASE(bitstrm_read_write_arbitrary_depths){
   BOOST_CHECK(buf.back() == sentry);
 }
 
+BOOST_AUTO_TEST_CASE(clz){
+  ureg v = 0; v = ~v; // 0b111..1
+  BOOST_CHECK( __builtin_clzll(v)  == 0);
+  BOOST_CHECK( op_clz<uint64_t>(v) == 0);
+  v = (~(v>>1));      // 0b100..0
+  BOOST_CHECK( __builtin_clzll(v)  == 0);
+  BOOST_CHECK( op_clz<uint64_t>(v) == 0);
+  v >>= 1;
+  BOOST_CHECK( __builtin_clzll(v)  == 1);
+  BOOST_CHECK( op_clz<uint64_t>(v) == 1);
+  v=0;
+  // BOOST_CHECK( __builtin_clzll(v) == 64);  Undefined, and is NOT 64
+  BOOST_CHECK( op_clz<uint64_t>(v) == 64);
+}
+
+
 BOOST_AUTO_TEST_CASE(ilzrun){
   ureg max_count = 11;
   ureg bits_for_test   = (max_count + 1)*(max_count + 2)/2;
@@ -205,15 +221,53 @@ BOOST_AUTO_TEST_CASE(ilzrun){
   for(int i = max_count + 1; i > 0 ; --i)
     buf.iwrite(i,1);  // write i-1 leading zeros
   buf.iwrite(bits_for_sentry, magic);
-    
+
+  cout << endl;
   for( int v = max_count; v != -1; --v){
     int run = po.ilzrun();
-    BOOST_TEST_MESSAGE("any ... " << run);
     BOOST_CHECK_MESSAGE( v == run, "v: " << v << " run: " << run);
   }
   
   BOOST_CHECK(po.iread_ureg(bits_for_sentry) == magic);
 }
+
+
+BOOST_AUTO_TEST_CASE(bigger_ilzrun){
+  alloced_bref buf(4*c_register_bits);
+  buf.zero();
+  
+  bref po(buf);
+
+  // write two singular bit 0 @ at 1st and bit 1 at 3rd register 
+  (buf + c_register_bits)  .iwrite(1,1);
+  (buf + 3*c_register_bits + 1).iwrite(1,1);
+
+  BOOST_CHECK(po.ilzrun() == c_register_bits);
+  BOOST_CHECK(po.ilzrun() == 2*c_register_bits);
+}
+
+BOOST_AUTO_TEST_CASE(longer_lz_strings){
+
+  alloced_bref buf(4*c_register_bits);
+  buf.zero();
+  bref c(buf);
+  bref e(buf + 4*c_register_bits);
+
+  (c + 2*c_register_bits + 1).iwrite(8, 0xA5); // 129 0's followed by  0b10100101
+  
+  BOOST_CHECK((c + 2*c_register_bits + 1) == (c = lzrun(c,e)));
+  BOOST_CHECK((c + 2)                     == (c = lzrun(c+1,e)));
+  BOOST_CHECK((c + 3)                     == (c = lzrun(c+1,e)));
+  BOOST_CHECK((c + 2)                     == (c = lzrun(c+1,e)));
+  BOOST_CHECK( e                          == lzrun(c+1, e));
+
+  alloced_bref buf2(2);
+  buf2.write(2,1);  // b01
+  BOOST_CHECK(buf2 + 1 == lzrun(buf2, buf2+2));
+  buf2.write(2,2);  // b10
+  BOOST_CHECK(buf2 + 0 == lzrun(buf2, buf2+2));
+}
+
 
 BOOST_AUTO_TEST_CASE(alloced_bref_copy){
   vector<char> buf(505);

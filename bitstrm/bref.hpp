@@ -115,9 +115,9 @@ namespace bitstrm {
     void iwrite_rlup(ureg value);
 
     // ilzrun
-    // scan from current bref and return number of leading zeros prior to binary 1
-    // This function is well defined for leading zeros < sizeof(reg)*CHAR_BIT
-    // ilzrun variant increments bref through first binary 1
+    // scan from current bref and return number of leading zeros prior to binary one
+    // This function is defined as long as memory valid until one encountered 
+    // ilzrun variant increments bref to first one
     unsigned lzrun()const {bref t(*this); return t.ilzrun(); }
     unsigned ilzrun();
 
@@ -141,9 +141,12 @@ namespace bitstrm {
     
     // print 
     //
+    // prints not the value but address of this bref
+    //
     // #include "bistrm/print.hpp"
     std::ostream& print(std::ostream& dest)const;
-    std::string   print()const;
+    std::ostream& print()const;
+
 
     // subtract
     //
@@ -179,6 +182,7 @@ namespace bitstrm {
     friend ureg popcount(bref, bref);
     friend bref advance (bref, bref, ureg);
     friend bref advance (bref, ureg);
+    friend bref lzrun   (bref, bref);
 
   }; // struct bref
   
@@ -186,6 +190,7 @@ namespace bitstrm {
     return bref::subtract(lhs, rhs);
   }
 
+  // in order to generally lighten compile, there is a dependency of #include "bistrm/print.hpp"
   inline std::ostream& operator<< (std::ostream& lhs, const bref& rhs){
     rhs.print(lhs);
     return lhs;
@@ -213,11 +218,27 @@ namespace bitstrm {
   // for [begin, end) return true if equivalent to [second, second + end - begin)  
   bool equal(bref begin, bref end, bref second);
 
+
+  // lzrun
+  //
+  // leading zero run, for [beg, end) return a bref to the first one encountered
+  // else end
+  bref lzrun(bref beg, bref end);
+  
+  
   // popcount
   //
   // population count of ones in [beg, end), O(ones) complexity
   ureg popcount(bref beg, bref end);
 
+
+  // print
+  //
+  // print value of [beg, end) in format bXYZ...
+  // #include "bistrm/print.hpp"
+  std::ostream&
+  print(std::ostream& out, bref beg, bref end);
+  
 
 # include "bitstrm/bref_impl.hpp"
   

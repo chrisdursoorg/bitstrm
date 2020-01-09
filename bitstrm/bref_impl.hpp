@@ -365,9 +365,9 @@ lzrun(bref beg, bref end){
 
 template<class _BASE> unsigned op_pop_count(_BASE);
 
-template<> unsigned op_pop_count<unsigned>(unsigned x)                    { return __builtin_popcount(x);   }
-template<> unsigned op_pop_count<unsigned long>(unsigned long x)          { return __builtin_popcountl(x);  }
-template<> unsigned op_pop_count<unsigned long long>(unsigned long long x){ return __builtin_popcountll(x); }
+template<> inline unsigned op_pop_count<unsigned>(unsigned x)                    { return __builtin_popcount(x);   }
+template<> inline unsigned op_pop_count<unsigned long>(unsigned long x)          { return __builtin_popcountl(x);  }
+template<> inline unsigned op_pop_count<unsigned long long>(unsigned long long x){ return __builtin_popcountll(x); }
 
 inline 
 ureg

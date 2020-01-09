@@ -202,7 +202,7 @@ namespace bitstrm {
 
   // advance
   //
-  // return advanced bref to the ord(th) value, else to end
+  // return advanced bref to the ord(th) value by successive calls to lzrun
   // end(less) version is well defined when ord count of bits in range
   bref advance(bref beg, bref end, ureg ord);
   bref advance(bref beg, ureg ord);

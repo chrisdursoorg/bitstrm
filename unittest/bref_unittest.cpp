@@ -225,6 +225,7 @@ BOOST_AUTO_TEST_CASE(ilzrun){
   cout << endl;
   for( int v = max_count; v != -1; --v){
     int run = po.ilzrun();
+    ++po;
     BOOST_CHECK_MESSAGE( v == run, "v: " << v << " run: " << run);
   }
   
@@ -243,6 +244,7 @@ BOOST_AUTO_TEST_CASE(bigger_ilzrun){
   (buf + 3*c_register_bits + 1).iwrite(1,1);
 
   BOOST_CHECK(po.ilzrun() == c_register_bits);
+  ++po;
   BOOST_CHECK(po.ilzrun() == 2*c_register_bits);
 }
 
@@ -515,7 +517,7 @@ BOOST_AUTO_TEST_CASE(advance_test){
 
   bref           end   = example + example_size;
   example.zero();
-  for(int i = 0; i < 32; ++i )
+  for(int i = 0; i < 32; ++i )  // b1010...
     (example + 2*i).iwrite(1, 1);
 
   

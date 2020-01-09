@@ -130,7 +130,9 @@ bref::iread_rlp(unsigned prefix_bits){
 
 inline ureg
 bref::iread_rlup(){
-  return iread_rls(ilzrun());
+  ureg run = ilzrun();
+  operator++();
+  return iread_rls(run);
 }
 
 inline void
@@ -284,7 +286,7 @@ bref::ilzrun(){
   
   if( run < remaining ){
     // count complete on current register
-    m_off += run + 1;
+    m_off += run;
     norm();
     return run;
   }
@@ -297,7 +299,7 @@ bref::ilzrun(){
     run  += locRun;
   } while(locRun == c_register_bits);  
 
-  m_off = locRun + 1;
+  m_off = locRun;
   norm();
   return run;
 }
@@ -341,49 +343,31 @@ equal(bref begin, bref last, bref second){
 
 inline bref
 lzrun(bref beg, bref end){
-  
+  reg* addr = beg.m_addr;
   // first shift left so pos[+0] is MSB
-  ureg  cur(endian_adj(*beg.m_addr) << beg.m_off);
+  ureg  cur(endian_adj(*addr) << beg.m_off);
   
   unsigned  run      = op_clz<ureg>(cur);
   unsigned remaining = unsigned(c_register_bits - beg.m_off);
   
-  if( run < remaining ){
-    // count complete on current register, return the smaller of that mark and end
-    bref r = beg + run;
-    return std::min(r, end);
+  if( run >= remaining ){
+    // must continue to further registers
+    run = remaining;
+    unsigned locRun;
+    do {
+      locRun = op_clz<ureg>(endian_adj(*(++addr)));
+      run    += locRun;
+    } while(locRun == c_register_bits and addr < end.m_addr);  
   }
   
-  // must continue to further registers
-  run = remaining;
-  unsigned locRun;
-  reg* addr = beg.m_addr;
-  do {
-    locRun = op_clz<ureg>(endian_adj(*(++addr)));
-    run  += locRun;
-  } while(locRun == c_register_bits and addr < end.m_addr);  
-
   return std::min(beg + run, end);
 }
 
-template<class WORD> struct pop_count_cmd;
+template<class _BASE> unsigned op_pop_count(_BASE);
 
-template<> struct pop_count_cmd<unsigned>{
-  static ureg op(ureg x){ return __builtin_popcount(x); }
-};
-
-template<> struct pop_count_cmd<unsigned long>{
-  static ureg op(ureg x){ return __builtin_popcountl(x); }
-};
-
-template<> struct pop_count_cmd<unsigned long long>{
-  static ureg op(ureg x){ return __builtin_popcountll(x); }
-};
-
-template<class WORD> struct pop_count_cmd{
-  // compilter error here indicates popcount builtin uspecified for ureg type
-};
-
+template<> unsigned op_pop_count<unsigned>(unsigned x)                    { return __builtin_popcount(x);   }
+template<> unsigned op_pop_count<unsigned long>(unsigned long x)          { return __builtin_popcountl(x);  }
+template<> unsigned op_pop_count<unsigned long long>(unsigned long long x){ return __builtin_popcountll(x); }
 
 inline 
 ureg
@@ -400,7 +384,7 @@ popcount(bref cur, bref end){
 
   // mid -- the optimization -- as long as on a clean mid register use builtin
   for(;cur.m_addr != end.m_addr; ++cur.m_addr)
-    count += pop_count_cmd<ureg>::op(*cur.m_addr);
+    count += op_pop_count<ureg>(*cur.m_addr);
 
   // tail
   for(;cur != end; ++cur)
@@ -417,18 +401,16 @@ popcount(bref cur, bref end){
 //
 // Performance - perhaps should special case out advance 1 with clz implementation
 
-inline bref advance(bref cur, bref end, ureg ord){
-  for(;cur != end and ord != 0; ++cur)
-    if(*(cur+1))
-      --ord;
+inline bref advance(bref cur, bref end, ureg cnt){
+
+  for(;cnt != 0; cur = bitstrm::lzrun(++cur, end), --cnt );
   
   return cur;
 }
 
-inline bref advance(bref cur, ureg ord){
-  for(;ord != 0; ++cur)
-    if(*(cur+1))
-      --ord;
+inline bref advance(bref cur, ureg cnt){
+
+  for(;cnt != 0; (++cur).ilzrun(), --cnt );
 
   return cur;
 }

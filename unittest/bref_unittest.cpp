@@ -573,3 +573,38 @@ BOOST_AUTO_TEST_CASE(popcount_test){
   }
   assert(pile.size() == example_size && "set should be completely covered");
 }
+
+BOOST_AUTO_TEST_CASE(rle){
+ 
+  // unsigned 
+  constexpr ureg max_packet = 14;
+  constexpr ureg test_size  = 1024*1024/32;
+  constexpr ureg total_bsize = 2*test_size*32;
+  alloced_bref buf(total_bsize);
+  
+  for(unsigned packet_size = 2; packet_size <= max_packet; ++packet_size){
+    bref c = buf;
+    bref e = buf + total_bsize;
+    
+    for(ureg n = 0; n < test_size; ++n){
+      ureg bsize = bref::rle_bsize(n, packet_size);
+      bref cc = c;
+      c.iwrite_rle(n, packet_size);
+      BOOST_CHECK(ureg(c - cc) == bsize);
+    }
+
+    BOOST_CHECK( c < e );
+    c = buf;
+
+    for(ureg n = 0; n < test_size; ++n){
+      bref cc = c;
+      ureg number = c.iread_rle( packet_size);
+      BOOST_CHECK(number == n);
+      BOOST_CHECK(bref::rle_bsize(n, packet_size) == ureg(c - cc));
+    }
+    BOOST_TEST_MESSAGE("Using packet size " << packet_size << " series up to " << test_size
+		       << " took required " << (c - buf) << " bits.");
+    
+  }
+
+}

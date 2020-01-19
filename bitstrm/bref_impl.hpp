@@ -138,6 +138,7 @@ bref::iread_rlup(){
 inline void
 bref::iwrite_rls(ureg value, unsigned bsize){
   ureg base = (ureg(1) << bsize) - 1;
+  assert(base <= value && "verify correct magnitude for value");
   iwrite(bsize, value - base);
 }
 
@@ -304,6 +305,59 @@ bref::ilzrun(){
   return run;
 }
 
+inline ureg
+bref::iread_rle (unsigned kbit){
+  assert(kbit > 1 &&
+	 "kbit == 1 trivial only able to store 0, kbit == 0 undefined");
+  --kbit;
+  ureg value = 0;
+  ureg next; 
+  do {
+    next = iread_ureg(1);
+    value <<= kbit;
+    value |= iread_ureg(kbit);
+  } while(next);
+  return value;
+}
+
+inline reg 
+bref::iread_rles(unsigned kbit){
+  assert(kbit > 1 &&
+	 "kbit == 1 trivial only able to store 0, kbit == 0 undefined");
+  --kbit;
+  reg      value = 0;
+  ureg     next;
+  unsigned pay   = 0;
+  do{
+    next = iread_ureg(1);
+    value <<= kbit;
+    pay   += kbit;
+    value |= iread_ureg(kbit);
+  }while(next);
+
+  // now pad left with signed bit
+  unsigned header = c_register_bits - pay - 1;
+  return (value << header) >> header; 
+}
+
+template<class SIGNED_UNSIGNED>
+inline void
+bref::iwrite_rle(SIGNED_UNSIGNED value, unsigned kbit){
+  assert(kbit > 1 &&
+	 "kbit == 1 trivial only able to store 0, kbit == 0 undefined");
+    
+  const unsigned pbit = kbit -1;
+  unsigned       part_count  = std::max(((min_bits(value) + pbit - 1) / pbit), ureg(1)); 
+  unsigned       shift_right = (part_count-1)*pbit;
+  const ureg     term        = (1 << pbit);
+
+  for(; part_count > 1; shift_right -= pbit, --part_count)
+    iwrite(kbit, term | ((value >> shift_right) & ~term));
+
+  iwrite(kbit, ((value >> shift_right) & ~term));
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 
 // TODO: copy/equal optimization! two things to manage
@@ -313,16 +367,16 @@ bref::ilzrun(){
 //
 inline 
 bref 
-copy(bref begin, bref end, bref result){
+copy(bref begin, bref end, bref dest){
   
   reg size = bref::subtract(end, begin);
   for(;size >= c_register_bits; size -= c_register_bits)
-    result.iwrite(c_register_bits, begin.iread_ureg(c_register_bits));
+    dest.iwrite(c_register_bits, begin.iread_ureg(c_register_bits));
 
   if(size)
-    result.iwrite(size, begin.iread_ureg(size));
+    dest.iwrite(size, begin.iread_ureg(size));
  
-  return result;
+  return dest;
 }
 
 // optimization! two things to manage 0) begin/end bits, 1) intra byte allignment  

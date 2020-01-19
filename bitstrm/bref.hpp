@@ -58,9 +58,26 @@ namespace bitstrm {
     bref& operator--();
     bref  operator--(int);
 
-
-    // run length specified encoding rls/rlp/rlup [r]un [l]ength
-    // [s]pecified, [p]refaced codecs, or [up] unary preferenced
+    // integer encodings
+    //  clz    count leading zeros
+    //         (e.g. {1, 01, 001, 0001} -> {0, 1, 2, 3})
+    
+    //  rls    run length (externally) specified, given a bsize of unsigned 
+    //         integer infer its magnitude (msb) encoding the mantissa optimally
+    //         (e.g. {'', '0', '00', '11'} -> {0, 1, 3, 6})
+    //
+    //  rlp    run length prefix, first read prefix_bsize as k-bit unsigned
+    //         integer to determine bsize then rls read the number
+    //         (e.g. {000000|, 000001|0, 000010|00, 000010|11}  -> {0, 1, 3, 6})
+    //
+    //  rlup   run length unary encode, (efficeint with very small numbers)
+    //         clz read the preface the rls
+    //         (e.g. {1|, 01|0, 001|00, 001|11} -> {0, 1, 3, 6})
+    //  rle    run length encode, kbit chunks self terminating value
+    //         (e.g. k:5 {0|0000, 1|1100^0|0001} -> {0, 193})
+    //
+    //  rles   run length encode, kbit chunks self terminating value, signed
+    //         (e.g. k:5 {0|0000, 1|1100^0|0001} -> {0, -63})
     //
     // run length specified maps integers with specified or listed
     // as in [prefix]{(2^(*prefix)-1)} bits, values of 
@@ -79,16 +96,20 @@ namespace bitstrm {
     //    + i-variant also increments by bsize (optimized variants)
     //    + reg/ureg are signed and unsigned interpretation of underlying bits
     //    + read_as for further template specialization based upon {reg, ureg}
-    //    + rls (described above) 
-    //    + rlp (descroned above)
+    //    + rls  (described above) 
+    //    + rlp  (descroned above)
     //    + rlup (described above)
+    //    + rle  (described above)
     reg  read_reg  (unsigned bsize) const; 
     ureg read_ureg (unsigned bsize) const;
     reg  iread_reg (unsigned bsize);
     ureg iread_ureg(unsigned bsize);
     ureg iread_rls (unsigned specific_bsize);
-    ureg iread_rlp (unsigned max_of_prefix = c_register_bit_addr_sz);
+    ureg iread_rlp (unsigned prefix_bsize = c_register_bit_addr_sz);
     ureg iread_rlup();
+    ureg iread_rle (unsigned kbit);
+    reg  iread_rles(unsigned kbit);
+    
 
     template<typename INT_TYPE>
     INT_TYPE read_as(unsigned bsize) const;
@@ -106,13 +127,15 @@ namespace bitstrm {
     //      will restore
     //    + rls (described above) NOTE INCONSISTENCY IN PARAMETER ORDER
     //    + rlp (described above) NOTE INCONSISTENCY IN PARAMETER ORDER
-    //    + rlup (described above) 
-    void write     (unsigned bsize, ureg value) const;
-    void iwrite    (unsigned bsize, ureg value);
-    void iwrite_rls(ureg value, unsigned bsize_value);
-    void iwrite_rlp(ureg value,
-                    unsigned max_run_length_bits = c_register_bit_addr_sz);
+    //    + rlup (described above)
+    //     
+    void write      (unsigned bsize, ureg value) const;
+    void iwrite     (unsigned bsize, ureg value);
+    void iwrite_rls (ureg value, unsigned bsize_value);
+    void iwrite_rlp (ureg value, unsigned max_bsize = c_register_bit_addr_sz);
     void iwrite_rlup(ureg value);
+    template<class SIGNED_UNSIGNED>
+    void iwrite_rle (SIGNED_UNSIGNED value, unsigned kbits = 5);
 
     // ilzrun
     // scan from current bref and return number of leading zeros prior to binary one
@@ -121,6 +144,15 @@ namespace bitstrm {
     unsigned lzrun()const {bref t(*this); return t.ilzrun(); }
     unsigned ilzrun();
 
+
+    template<class SIGNED_UNSIGNED>
+    static ureg rle_bsize(SIGNED_UNSIGNED value, unsigned kbit){
+      if(value == 0)
+	return kbit;
+      unsigned part = ((min_bits(value) + kbit - 1 - 1)/(kbit -1));
+      return part*kbit;
+    }
+    
     // _chars
     // 
     // return ABSOLUTE minimum of bytes(s) necessary to store
@@ -146,7 +178,6 @@ namespace bitstrm {
     // #include "bistrm/print.hpp"
     std::ostream& print(std::ostream& dest)const;
     std::ostream& print()const;
-
 
     // subtract
     //

@@ -23,7 +23,6 @@
 // cout << (*a=42) << endl;        // 42
 // cout << (*(--(++a)))  << endl;  // 42
 
-
 #ifndef BIT_INT_ITR_HPP_
 #define BIT_INT_ITR_HPP_
 
@@ -164,11 +163,17 @@ namespace bitstrm {
     rhs = tmp;
   }
 
+  template<class SIGNED_UNSIGNED> struct ConstRefWrapper;
+
   template<class SIGNED_UNSIGNED>
   struct RefWrapper {
     typedef _bit_int_reference<SIGNED_UNSIGNED> ref_type;
 
     // RefWrapper(const ConstRefWrapper&){} intnetionally ommitted: not permitted
+    RefWrapper(){}
+    RefWrapper(RefWrapper const& ){}
+
+    RefWrapper& operator=(RefWrapper const&){ return *this; }
     
     ref_type gen_ref(int bsize, bref cur){
       return ref_type(bsize, cur);
@@ -177,16 +182,18 @@ namespace bitstrm {
 
   template<class SIGNED_UNSIGNED>
   struct ConstRefWrapper {
+
     typedef SIGNED_UNSIGNED const & ref_type;
 
-    ConstRefWrapper(const ConstRefWrapper&){}
-    ConstRefWrapper(const RefWrapper<SIGNED_UNSIGNED>&){} // intentionally uncluded
+    ConstRefWrapper(ConstRefWrapper const &){}
+    ConstRefWrapper(RefWrapper<SIGNED_UNSIGNED> const &){} // intentionally included
     ConstRefWrapper(){}
 
-
     ConstRefWrapper& operator=(const ConstRefWrapper&){ return *this; }
-    ConstRefWrapper& operator=(const RefWrapper<SIGNED_UNSIGNED>&){ return *this;}
-    
+    ConstRefWrapper& operator=(const RefWrapper<SIGNED_UNSIGNED>&){
+      return *this;
+    }
+
     ref_type gen_ref(int bsize, bref cur){
       return m_value = cur.read_as<SIGNED_UNSIGNED>(bsize);
     }
@@ -194,6 +201,7 @@ namespace bitstrm {
     constexpr static bool is_const_itr = true;
 
   private:
+    
     SIGNED_UNSIGNED m_value;
   };
   
@@ -208,7 +216,6 @@ namespace bitstrm {
   // * second setting the BSIZE => -1  allows/requires
   // the dynamic definition of bsize in the constructor
   //
-  
   template<typename SIGNED_UNSIGNED, int BSIZE, typename REF_WRAPPER>
   class bit_int_base_itr: public boost::iterator_facade<
     bit_int_base_itr<SIGNED_UNSIGNED, BSIZE, REF_WRAPPER>
@@ -222,50 +229,58 @@ namespace bitstrm {
     typedef bit_int_base_itr  my_type;
     typedef SIGNED_UNSIGNED   value_type;
     typedef REF_WRAPPER       wrapper_type;
+
+    bit_int_base_itr(): m_bsize(BSIZE){
+      static_valid_bsize_assert();
+    }
     
-    bit_int_base_itr(const bit_int_base_itr& rhs)
-    {this->operator=(rhs);}
+    bit_int_base_itr(const bit_int_base_itr& rhs){
+      this->operator=(rhs);
+    }
 
     // constructors, see above
-    bit_int_base_itr(const bref& beg)
-      : m_bsize(BSIZE), m_cur(beg) {
-      static_static_asserts();
+    bit_int_base_itr(const bref& beg): m_bsize(BSIZE), m_cur(beg) {
+      static_valid_bsize_assert();
     }
     
-    bit_int_base_itr(const alloced_bref& beg)
-      : m_bsize(BSIZE), m_cur(beg) {
-      static_static_asserts();
+    bit_int_base_itr(const alloced_bref& beg): m_bsize(BSIZE), m_cur(beg) {
+      static_valid_bsize_assert();
     }
-
     
     // note only some RHS_BIT_INT_ITR to my_type are permitted
     // (regulated in assignment operator)
     template<class RHS_BIT_INT_ITR>
     bit_int_base_itr(const RHS_BIT_INT_ITR& rhs)
       : m_bsize(rhs.m_bsize), m_cur(rhs.m_cur), m_ref(rhs.m_ref){}
-    
 
     template<class RHS_BIT_INT_ITR>
     bit_int_base_itr& operator=(const RHS_BIT_INT_ITR& rhs){
-      typedef boost::is_same<value_type, typename RHS_BIT_INT_ITR::value_type>
-        same_value_type;
-      BOOST_STATIC_ASSERT_MSG(same_value_type::value,
-                              "assignment value_type does not match");
-      assert( m_bsize == rhs.m_bsize && "bsize can be either static or dynamic");
+      typedef boost::is_same<value_type, typename RHS_BIT_INT_ITR::value_type> same_value_type;
+      static_assert(same_value_type::value, "assignment value_type does not match");
+      assert( m_bsize == rhs.m_bsize && "assignment only makes sense for same bsize");
       
       m_bsize = rhs.m_bsize;
       m_cur   = rhs.m_cur;
-      m_ref   = rhs.m_ref;  // guards against non_const <- const
+      m_ref   = rhs.m_ref;  // guard against non_const <- const
+
+      return *this;
     }
-    
+
+    bit_int_base_itr& operator=(bit_int_base_itr const & rhs){
+
+      m_bsize = rhs.m_bsize;
+      m_cur   = rhs.m_cur;
+      m_ref   = rhs.m_ref;  // guard against non_const <- const
+      
+      return *this;
+    }
     
     bit_int_base_itr(const bref& beg, int bsize)
       : m_bsize(bsize), m_cur(beg) {
       
-      BOOST_STATIC_ASSERT_MSG(BSIZE == -1, "see notes on bit_int_base_itr"
+      static_assert(BSIZE == -1, "see notes on bit_int_base_itr"
                               ", using this ctor you must have BSIZE defined as"
                               "-1");
-      assert(bsize > 0 && "validity check for bsize");
       assert(bsize <= (int)c_register_bits  && "dynamic bsize beyond the c_register_bits");
     }
     
@@ -295,16 +310,17 @@ namespace bitstrm {
     reg                            distance_to(const my_type& rhs)const{
       return (rhs.m_cur - m_cur)/m_bsize;
     }
+    
 
     // let compiler check to see that reasonable static bsize is choosen
-    static void static_static_asserts(){
-      BOOST_STATIC_ASSERT_MSG(BSIZE > 0,
-                              "see notes on bit_int_base_itr, using this "
-                              "ctor you must have BSIZE defined as zero or a "
-                              "positive integer or zero");
+    static void static_valid_bsize_assert(){
+      static_assert(BSIZE > 0,
+		    "see notes on bit_int_base_itr, using this "
+		    "ctor you must have BSIZE defined as zero or a "
+		    "positive integer or zero");
       
-      BOOST_STATIC_ASSERT_MSG(BSIZE <= c_register_bits,
-                              "static BSIZE beyond the c_register_bits"); 
+      static_assert(BSIZE <= c_register_bits,
+		    "static BSIZE beyond the c_register_bits"); 
     }
     
   };

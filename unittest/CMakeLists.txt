@@ -9,7 +9,8 @@ if("${USE_BOOST}")
 	   reg_unittest.cpp
 	   print_unittest.cpp
 	   utility_unittest.cpp   
-           bitstrm_unittest.cpp 
+           bitstrm_unittest.cpp
+	   bit_int_itr_unittest.cpp
 	   )
 
 

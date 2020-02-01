@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(dynamic_interface_style_itr)
 
   // assignments to some space on the stack
   alloced_bref buf(arbitrary_size*5);
-  any = buf;
+  any     = buf;
   begin   = dbit_int_itr<ureg>(any, arbitrary_size);
   dbit_int_itr<ureg> cur(begin);
   dbit_int_itr<ureg> end(any + arbitrary_size*5, arbitrary_size);
@@ -497,3 +497,25 @@ BOOST_AUTO_TEST_CASE(code_example_2){
   
 }
 
+BOOST_AUTO_TEST_CASE(const_itr_2_itr_test){
+
+  
+  bit_int_itr<3, int> i3type0;
+  bit_int_itr<3, int> i3type1;
+
+  bit_int_citr<3, int> i3ctype0;
+  bit_int_citr<3, int> i3ctype1;
+
+  BOOST_CHECK(true);
+
+  //  i3type0 = i3ctype0;  a compiler error, cannot assign a const itr to a non const itr
+  i3type0 = i3type1;    // same type
+  BOOST_CHECK(i3type0 == i3type1);
+  i3ctype1 = i3ctype0;  // same type
+  BOOST_CHECK(i3ctype1 == i3ctype0);
+
+  i3ctype1 = i3type0;   // ok to copy a non const itr into a const itr
+
+  BOOST_CHECK(i3ctype1 == i3type0);
+
+}

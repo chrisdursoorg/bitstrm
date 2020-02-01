@@ -5,10 +5,12 @@
 
 #include <boost/test/unit_test.hpp>
 #include "bitstrm/alloced_bref.hpp"
+#include "bitstrm/print.hpp"
 #include "bitstrm/utility.hpp"
 #include <limits>
 #include <iostream>
 #include <sstream>
+#include <set>
 
 using namespace boost::unit_test;
 using namespace bitstrm;
@@ -256,12 +258,13 @@ BOOST_AUTO_TEST_CASE(longer_lz_strings){
   bref e(buf + 4*c_register_bits);
 
   (c + 2*c_register_bits + 1).iwrite(8, 0xA5); // 129 0's followed by  0b10100101
-  
-  BOOST_CHECK((c + 2*c_register_bits + 1) == (c = lzrun(c,e)));
-  BOOST_CHECK((c + 2)                     == (c = lzrun(c+1,e)));
-  BOOST_CHECK((c + 3)                     == (c = lzrun(c+1,e)));
-  BOOST_CHECK((c + 2)                     == (c = lzrun(c+1,e)));
-  BOOST_CHECK( e                          == lzrun(c+1, e));
+
+  auto n = c;
+  BOOST_CHECK((c + 2*c_register_bits + 1) == (n = lzrun(c,e))); c = n + 1;
+  BOOST_CHECK((c + 1)                     == (n = lzrun(c,e))); c = n + 1;
+  BOOST_CHECK((c + 2)                     == (n = lzrun(c,e))); c = n + 1;
+  BOOST_CHECK((c + 1)                     == (n = lzrun(c,e))); c = n + 1;
+  BOOST_CHECK( e                          == lzrun(c, e));
 
   alloced_bref buf2(2);
   buf2.write(2,1);  // b01
@@ -520,7 +523,7 @@ BOOST_AUTO_TEST_CASE(advance_test){
   for(int i = 0; i < 32; ++i )  // b1010...
     (example + 2*i).iwrite(1, 1);
 
-  
+  using bitstrm::advance;  // not the std::advance
   BOOST_CHECK(advance(example, 0) == example);
   BOOST_CHECK(advance(example, end, 0) == example);
 
@@ -564,7 +567,7 @@ BOOST_AUTO_TEST_CASE(popcount_test){
   example.zero();
   bref end = example + example_size;
 
-  set<unsigned> pile;
+  std::set<unsigned> pile;
   for(unsigned i = 0; i < example_size; ++i){
     ureg element = (i*1027)%example_size;
     pile.insert(element);

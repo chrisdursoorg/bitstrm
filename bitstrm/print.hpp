@@ -24,10 +24,15 @@ namespace bitstrm {
   inline
   std::ostream&
   bref::print(std::ostream& dest)const{    
-    std::ios_base::fmtflags restore = dest.setf(std::ios::hex, std::ios::basefield);
-    dest << std::hex << m_addr;
-    dest << " +" << std::dec << m_off;
-    dest.setf(restore);
+
+    if(m_addr == nullptr)
+      dest << "0xNullptr";
+    else {
+      std::ios_base::fmtflags restore = dest.setf(std::ios::hex, std::ios::basefield);
+      dest << std::hex << m_addr;
+      dest << " +" << std::dec << m_off;
+      dest.setf(restore);
+    }
     return dest;
   }
   

@@ -61,23 +61,24 @@ namespace bitstrm {
     // integer encodings
     //  clz    count leading zeros
     //         (e.g. {1, 01, 001, 0001} -> {0, 1, 2, 3})
-    
+    //
     //  rls    run length (externally) specified, given a bsize of unsigned 
     //         integer infer its magnitude (msb) encoding the mantissa optimally
     //         (e.g. {'', '0', '00', '11'} -> {0, 1, 3, 6})
     //
-    //  rlp    run length prefix, first read prefix_bsize as k-bit unsigned
-    //         integer to determine bsize then rls read the number
-    //         (e.g. {000000|, 000001|0, 000010|00, 000010|11}  -> {0, 1, 3, 6})
-    //
     //  rlup   run length unary encode, (efficeint with very small numbers)
     //         clz read the preface the rls
     //         (e.g. {1|, 01|0, 001|00, 001|11} -> {0, 1, 3, 6})
-    //  rle    run length encode, kbit chunks self terminating value
+    //
+    //  rle    run length encode, (next prefix) kbit packet size, kbit > 1
     //         (e.g. k:5 {0|0000, 1|1100^0|0001} -> {0, 193})
     //
-    //  rles   run length encode, kbit chunks self terminating value, signed
+    //  rles   signed integer run length encode, (next prefix) kbit packet size
     //         (e.g. k:5 {0|0000, 1|1100^0|0001} -> {0, -63})
+    //
+    //  rlp    run length prefix, first read prefix_bsize as kbit unsigned
+    //         integer to determine bsize then rls read the numbe
+    //         (e.g. {000000|, 000001|0, 000010|00, 000010|11}  -> {0, 1, 3, 6})
     //
     // run length specified maps integers with specified or listed
     // as in [prefix]{(2^(*prefix)-1)} bits, values of 
@@ -100,6 +101,7 @@ namespace bitstrm {
     //    + rlp  (descroned above)
     //    + rlup (described above)
     //    + rle  (described above)
+    //    + rles (descrined above)
     reg  read_reg  (unsigned bsize) const; 
     ureg read_ureg (unsigned bsize) const;
     reg  iread_reg (unsigned bsize);
@@ -109,7 +111,6 @@ namespace bitstrm {
     ureg iread_rlup();
     ureg iread_rle (unsigned kbit);
     reg  iread_rles(unsigned kbit);
-    
 
     template<typename INT_TYPE>
     INT_TYPE read_as(unsigned bsize) const;
@@ -126,6 +127,8 @@ namespace bitstrm {
     //      (assuming bsize >= min_bits(value) ), read_as of appropriate type
     //      will restore
     //    + rls (described above) NOTE INCONSISTENCY IN PARAMETER ORDER
+    //      signed and unsigned writes equivalent assuming iread_rle and iread_rles
+    //      called appropriately
     //    + rlp (described above) NOTE INCONSISTENCY IN PARAMETER ORDER
     //    + rlup (described above)
     //     

@@ -1,2 +1,6 @@
 # emacs
 *~
+
+#cmake
+cmake_debug
+cmake_release

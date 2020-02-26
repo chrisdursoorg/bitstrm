@@ -601,7 +601,7 @@ BOOST_AUTO_TEST_CASE(rle){
 
     for(ureg n = 0; n < test_size; ++n){
       bref cc = c;
-      ureg number = c.iread_rle( packet_size);
+      ureg number = c.iread_rle(packet_size);
       BOOST_CHECK(number == n);
       BOOST_CHECK(bref::rle_bsize(n, packet_size) == ureg(c - cc));
     }

@@ -25,7 +25,10 @@ namespace bitstrm {
     // reserved bits
     alloced_bref(ureg bsize, ureg pre_reserved = 0): m_reserved(pre_reserved){allocate(bsize);}
     alloced_bref(): m_reserved(0) {allocate(0);}
-
+    alloced_bref(alloced_bref&& rhs) = default;
+    alloced_bref& operator=(alloced_bref&& rhs) = default;
+    
+    
     // set_reserved
     //
     // sets the reserved mark, with no alteration of the underlying memory

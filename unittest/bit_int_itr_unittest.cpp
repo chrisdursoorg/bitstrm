@@ -57,13 +57,13 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
 
 BOOST_AUTO_TEST_CASE(dynamic_interface_style_itr)
 {
-  // bit_int_itr performs read on assignment, memory must actually be
-  // allocated
-  alloced_bref any(256); 
-  const int arbitrary_size = 4;
-  dbit_int_itr<ureg> begin(any, arbitrary_size);
+  // bit_int_itr performs read on assignment, memory must be allocated
+  const int arbitrary_bsize = 4;
+  const int maximum_elements = 5;
+  alloced_bref any(arbitrary_bsize*maximum_elements); 
+  dbit_int_itr<ureg> begin(any, arbitrary_bsize);
   dbit_int_itr<ureg> empty_end(begin);
-  dbit_int_itr<ureg> two_end(any + arbitrary_size*2, arbitrary_size);
+  dbit_int_itr<ureg> two_end(any + arbitrary_bsize*2, arbitrary_bsize);
   dbit_int_itr<ureg> two_by_itr_end(begin + 2);
   
   // address checking
@@ -83,12 +83,12 @@ BOOST_AUTO_TEST_CASE(dynamic_interface_style_itr)
   BOOST_CHECK( t++   == begin);
   BOOST_CHECK( ++t   == two_end);
 
-  // assignments to some space on the stack
-  alloced_bref buf(arbitrary_size*5);
-  any     = buf;
-  begin   = dbit_int_itr<ureg>(any, arbitrary_size);
+  // reuse old buffer with move
+  alloced_bref other2(std::move(any));
+  alloced_bref other = std::move(other2);
+  begin   = dbit_int_itr<ureg>(other, arbitrary_bsize);
   dbit_int_itr<ureg> cur(begin);
-  dbit_int_itr<ureg> end(any + arbitrary_size*5, arbitrary_size);
+  dbit_int_itr<ureg> end(other + arbitrary_bsize*5, arbitrary_bsize);
   for(int i = 0; cur != end; ++cur, ++i){
     *cur = i;
     BOOST_CHECK(cur - begin == i);

@@ -78,7 +78,7 @@ namespace  bitstrm {
     ureg isNeg  = ((ureg) v) >> (c_register_bits-1);  // [0] -> 0, [2,3] -> 1 
     ureg negMsk = ((reg)  v) >> (c_register_bits-1);  // [0] -> 0,
                                                       //   [2,3] -> 0xFF..F
-      
+    
     return (((((ureg)~v) & negMsk) | (((ureg)v) & ~negMsk))  << 1) | isNeg;
   }
     
@@ -137,7 +137,7 @@ namespace  bitstrm {
     return v ? static_cast<ureg>( (sizeof(signed  long long)*CHAR_BIT)
                                   - __builtin_clzll(bit_sign_adj(v))) : 0;
   }
-    
+  
   template<typename _ITR>
   inline unsigned min_bits(_ITR b, _ITR e){ 
     ureg v(0); 
@@ -146,7 +146,14 @@ namespace  bitstrm {
       v |= bit_sign_adj(*b++);
       
     return min_bits(v);
-  }  
+  }
+
+  // bsize_rls
+  //
+  // returns the `min` and exact size of bits of val 
+  inline unsigned bsize_rls(ureg val){
+    return min_bits(ureg(val + 1)) - 1;
+  }
 
   // signextend
   //

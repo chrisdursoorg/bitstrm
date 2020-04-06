@@ -241,10 +241,17 @@ PBITS                    Q1[bits]                    Q2[bits]                   
     4                 16383[  18]                 21844[  18]                 32767[  19]                 65534[  19]
     5            1073741823[  35]            1431655764[  35]            2147483647[  36]            4294967294[  36]
     6   4611686018427387903[  68]   6148914691236517204[  68]   9223372036854775807[  69]  18446744073709551614[  69]
-#endif
-
-    
-                                
-
-  
+#endif  
 }
+
+BOOST_AUTO_TEST_CASE(bsize_rls_test){
+  BOOST_CHECK(bsize_rls(0) == 0);   // b''
+  BOOST_CHECK(bsize_rls(1) == 1);   // b'0'
+  BOOST_CHECK(bsize_rls(2) == 1);   // b'1'
+  BOOST_CHECK(bsize_rls(3) == 2);   // b'00'
+  BOOST_CHECK(bsize_rls(4) == 2);   // b'01'
+  BOOST_CHECK(bsize_rls(5) == 2);   // b'10'
+  BOOST_CHECK(bsize_rls(6) == 2);   // b'11'
+  BOOST_CHECK(bsize_rls(7) == 3);   // b'000'
+}
+

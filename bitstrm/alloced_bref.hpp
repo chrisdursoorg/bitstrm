@@ -77,8 +77,8 @@ namespace bitstrm {
     //
     // returns a pointer to the begining of internal buffer for io
     // operations.  Result invalidated on allocate.
-    const char* data()const{ return reinterpret_cast<const char*>(&m_buf.front()); }
-          char* data()     { return reinterpret_cast<      char*>(&m_buf.front()); }
+    const char* data()const{ return reinterpret_cast<const char*>(m_buf.data()); }
+          char* data()     { return reinterpret_cast<      char*>(m_buf.data()); }
     
     // bytesize
     //

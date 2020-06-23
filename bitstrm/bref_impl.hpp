@@ -7,13 +7,6 @@
 inline ureg
 bref::operator*()const { return read_ureg(1); }
 
-inline bref&
-bref::operator= (const bref& rhs){
-  m_addr = rhs.m_addr;
-  m_off  = rhs.m_off;
-  return *this;
-}
-
 inline bool
 bref::operator==(const bref& rhs)const{
   return m_addr == rhs.m_addr && m_off == rhs.m_off;

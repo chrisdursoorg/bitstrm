@@ -39,16 +39,18 @@ namespace bitstrm {
     bref(void* addr): m_addr(reinterpret_cast<reg*>(addr)), m_off(0){}
     bref(void* addr, int off): m_addr(reinterpret_cast<reg*>(addr)),
                                m_off(off){ norm();}
+    constexpr bref(bref&& rhs) = default;
     
     // STANDARD OPERATORS
     ureg  operator*()const;
-    bref& operator= (const bref& rhs);
-    bool  operator==(const bref& rhs)const;
-    bool  operator<=(const bref& rhs)const;
-    bool  operator>=(const bref& rhs)const;
-    bool  operator!=(const bref& rhs)const;
-    bool  operator< (const bref& rhs)const;
-    bool  operator> (const bref& rhs)const;
+    bref& operator= (const bref& rhs) = default;
+    bref& operator= (bref&& rhs) = default;
+    bool  operator==(bref const& rhs)const;
+    bool  operator<=(bref const& rhs)const;
+    bool  operator>=(bref const& rhs)const;
+    bool  operator!=(bref const& rhs)const;
+    bool  operator< (bref const& rhs)const;
+    bool  operator> (bref const& rhs)const;
     bref  operator+ (size_t rhs)     const;
     bref  operator- (size_t rhs)     const;
     bref& operator+=(size_t rhs);

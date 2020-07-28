@@ -11,32 +11,41 @@ namespace bitstrm {
 
   // alloced_bref
   //
-  // allocator for convienince, either allocate a fixed size at
-  // intialization or else call allocate method to reset() ref value
-  // at beginning of newly allocated memory buffer.  
+  // a heap re/allocate for bitstrm
+  //
+  // maintains a seperate 'reserved' section 
+  //
+  // pre()[reserved-bits]|{this->bref}
   
   class alloced_bref : public bref {
   public:
-    
+     
     // alloced_bref
     //
-    // allocate at least bsize + pre_reserved space, with pre_reserved bits
-    // accessible via pre(), all other operations reference bref following 
-    // reserved bits
-    alloced_bref(ureg bsize, ureg pre_reserved = 0): m_reserved(pre_reserved){allocate(bsize);}
+    // allocate at least main_bsize + pre_reserved space, sets this
+    // location following reserved bits
+
+    alloced_bref(ureg main_bsize, ureg pre_reserved = 0)
+      : m_reserved(pre_reserved){allocate(main_bsize);}
     alloced_bref(): m_reserved(0) {allocate(0);}
     alloced_bref(alloced_bref&& rhs) = default;
     alloced_bref& operator=(alloced_bref&& rhs) = default;
     
     
-    // set_reserved
+    // set_reserve
     //
-    // sets the reserved mark, with no alteration of the underlying memory
-    void set_prereserve(ureg pre_reserved){ m_reserved = pre_reserved;}
+    // sets the reserved bsize
+    void set_reserve(ureg reserved){ m_reserved = reserved;}
+
+    // get_reserved
+    //
+    // gets the reserved bsize
+    ureg get_reserve()const { return m_reserved; }
+
     
     // swap
     //
-    // non allocating constant time swap
+    // non allocating swap
     void swap(alloced_bref& rhs){
       std::swap(static_cast<bref&>(*this), static_cast<bref&>(rhs));
       std::swap(m_reserved, rhs.m_reserved);
@@ -45,7 +54,7 @@ namespace bitstrm {
     
     // allocate
     //
-    // allow for late initialization as is often useful for build up of substreams
+    // allocate or reallocate bsize + reserved bits
     void allocate(ureg bsize) {
       bsize += m_reserved;
       m_buf.resize(uregs(bsize));
@@ -55,14 +64,13 @@ namespace bitstrm {
     
     // reset
     //
-    // resets position to begining of buffer following reserve.
+    // resets position to begining of buffer *following* reserve
     void reset(){
       this->bref::operator=(pre() + m_reserved);
     }
 
     // pre
     //
-
     bref pre(){
       return bref(data());
     }
@@ -70,13 +78,13 @@ namespace bitstrm {
     // zero
     //
     // fills the underlying allcoated memory to zero
-    // includes 
+    // includes header section
     void zero(){fill(m_buf.begin(), m_buf.end(), 0); }
 
     // data
     //
     // returns a pointer to the begining of internal buffer for io
-    // operations.  Result invalidated on allocate.
+    // operations
     const char* data()const{ return reinterpret_cast<const char*>(m_buf.data()); }
           char* data()     { return reinterpret_cast<      char*>(m_buf.data()); }
     

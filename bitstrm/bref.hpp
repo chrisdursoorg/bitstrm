@@ -64,9 +64,15 @@ namespace bitstrm {
     //  clz    count leading zeros
     //         (e.g. {1, 01, 001, 0001} -> {0, 1, 2, 3})
     //
-    //  rls    run length (externally) specified, given a bsize of unsigned 
-    //         integer infer its magnitude (msb) encoding the mantissa optimally
+    //  rls    run length (externally) specified value, given a bsize infer the
+    //         magnitude (msb) encoding the mantissa optimally
     //         (e.g. {'', '0', '00', '11'} -> {0, 1, 3, 6})
+    
+    //  rlss   run length (externally) specified signed value, given a bsize
+    //         infer the magnitude, encode a leading signed bit and store the
+    //         mantissa optimally
+    //         (e.g. {'', '0', '00', '010'} -> {0, 1, 2, 6})
+    //         (e.g. {'1', '10', '101', '1110'} -> {-1, -3, -6, -9})
     //
     //  rlup   run length unary encode, (efficeint with very small numbers)
     //         clz read the preface the rls
@@ -345,7 +351,33 @@ namespace bitstrm {
    //                       ...                          
    //     6       62       68  4611686018427387903  9223372036854775806  
    //     6       63       69  9223372036854775807  18446744073709551614 
-  
+
+
+  // rlss
+  //
+  // run lengh signed specified
+  //
+  //  9  0001
+  //  8  0000
+  //  7  011
+  //  6  010
+  //  5  001
+  //  4  000
+  //  3  01
+  //  2  00
+  //  1  0
+  //  0
+  // -1  1
+  // -2  11
+  // -3  10
+  // -4  111
+  // -5  110
+  // -6  101
+  // -7  100
+  // -8  1111
+  // -9  1110
+  // 
+  // formula with x the 2's compliment value of k bits  v = x + (x < 0) ? : -(2^k-1 -1) : (2^k-1);
   
 } // namespace bitstrm
 

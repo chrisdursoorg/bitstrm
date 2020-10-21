@@ -19,7 +19,6 @@ using namespace std;
 
 
 unsigned bitstrm::TimeFixture::s_timer_number = 0;
-// random_device                 rand_dev;
 mt19937                       generator(3);
 
  std::ostream&
@@ -333,7 +332,7 @@ int main(int argc , const char** argv){
 
   cout << "This simple algorithm to obtains the count of the very\n"
     "smallest cycle, and the very largest cycle of a psudo-random\n"
-    "generated singly linked graph in a way that that requires only\n"
+    "generated singely linked graph in a way that that requires only\n"
     "a couple bits per node of information for current traversal state.\n"
        << endl << endl;
      

@@ -127,10 +127,10 @@ namespace bitstrm {
     }
 
   private:
-    bref        p_;  
-    unsigned    bitsz_;
-    SIGN_UNSIGN value_;
-    SIGN_UNSIGN old_value_;
+    bref         p_;  
+    unsigned     bitsz_;
+    SIGN_UNSIGN  value_;
+    SIGN_UNSIGN  old_value_;
     inline void  read()  { old_value_ = value_ = p_.read_as<SIGN_UNSIGN>(bitsz_); }
     inline void  write() { if(value_ != old_value_ ) p_.write(bitsz_, value_); } 
 
@@ -316,7 +316,7 @@ namespace bitstrm {
     static void static_valid_bsize_assert(){
       static_assert(BSIZE > 0,
 		    "see notes on bit_int_base_itr, using this "
-		    "ctor you must have BSIZE defined as zero or a "
+		    "ctor you must have BSIZE defined as a "
 		    "positive integer or zero");
       
       static_assert(BSIZE <= c_register_bits,

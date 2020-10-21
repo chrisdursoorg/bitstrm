@@ -9,20 +9,20 @@
 
 // bref(erence)
 //
-// refers to a location in an allocated bitstrm assuming external
-// type/bsize management
+// Refers to a location in an allocated bitstrm assuming external
+// type/bsize management.
 //
-// two references r0, r1 can consitute a range [r0, r1) if constructed
-// from the same base address over contiguous reg castable memory
+// The 'pointer' or 'iterator' like behavior assumes a single bit
+// type, hence r1 - r0 is the bitwise distance or bsize, *r0 is the
+// bit value at r0, r0++ avavances the reference by 1 bit, etc.
 //
-// the default 'pointer' behavior assumes a single bit type, hence
-// r1 - r0 is the bitwise distance or bsize, *r0 is the bit value at r0,
-// r0++ avavances the reference by 1 bit, etc.
+// Two bref r0, r1 can consitute a range [r0, r1) if constructed from
+// the same base address over contiguous reg castable memory.
 //
-// standard access is provided by read/write methods, applying to [0,
-// sizeof(reg)*__CHAR_BIT__) (e.g. 64 bits) bit(s) of memory, where
-// bits == 0 <=> 0 value for read (or non-operation for write), a
-// practical convention for many codecs.
+// Milti bit access allows for the mapping of [0,
+// c_register_bit_addr_sz) bits to/from signed (reg) or unsigned (ureg)
+// values using various coding and meta information
+//
 
 
 namespace bitstrm {
@@ -88,7 +88,6 @@ namespace bitstrm {
     //
     // See table at bottom, rlp_bsize and rlup_bsize for ranges of values
     // acheivable for differing number of bits
-
     
     // [i]read_{reg,ureg},iread_rls,iread_rlp, iread_rlup}
     // 
@@ -109,15 +108,18 @@ namespace bitstrm {
     reg  iread_reg (unsigned bsize);
     ureg iread_ureg(unsigned bsize);
     ureg iread_rls (unsigned specific_bsize);
-    ureg iread_rlp (unsigned prefix_bsize = c_register_bit_addr_sz);
-    ureg iread_rlup();
-    ureg iread_rle (unsigned kbit);
-    reg  iread_rles(unsigned kbit);
-
     template<typename INT_TYPE>
     INT_TYPE read_as(unsigned bsize) const;
     template<typename INT_TYPE> 
     INT_TYPE iread_as(unsigned );  // iread_as<ureg_or_reg_only>(bsize)
+    ureg iread_rle (unsigned kbit);
+    reg  iread_rles(unsigned kbit);
+
+    // deprecated block, v2.
+    ureg iread_rlp (unsigned prefix_bsize = c_register_bit_addr_sz);
+    ureg iread_rlup();
+    // deprecated end
+
 
     // write
     // 
@@ -133,22 +135,27 @@ namespace bitstrm {
     //      called appropriately
     //    + rlp (described above) NOTE INCONSISTENCY IN PARAMETER ORDER
     //    + rlup (described above)
-    //     
-    void write      (unsigned bsize, ureg value) const;
-    void iwrite     (unsigned bsize, ureg value);
+    //
+    // deprecated note - order of arguments will change with v2.
+    void write      (unsigned bsize, ureg signed_or_unsigned_value) const;
+    void iwrite     (unsigned bsize, ureg signed_or_unsigned_value);
+    // deprecated note - end
     void iwrite_rls (ureg value, unsigned bsize_value);
-    void iwrite_rlp (ureg value, unsigned max_bsize = c_register_bit_addr_sz);
-    void iwrite_rlup(ureg value);
     template<class SIGNED_UNSIGNED>
     void iwrite_rle (SIGNED_UNSIGNED value, unsigned kbits = 5);
 
+
+    // depricated block, v2.
+    void iwrite_rlp (ureg value, unsigned max_bsize = c_register_bit_addr_sz);
+    void iwrite_rlup(ureg value);
+    // depricated block
+    
     // ilzrun
     // scan from current bref and return number of leading zeros prior to binary one
     // This function is defined as long as memory valid until one encountered 
     // ilzrun variant increments bref to first one
     unsigned lzrun()const {bref t(*this); return t.ilzrun(); }
     unsigned ilzrun();
-
 
     template<class SIGNED_UNSIGNED>
     static ureg rle_bsize(SIGNED_UNSIGNED value, unsigned kbit){
@@ -254,19 +261,16 @@ namespace bitstrm {
   // for [begin, end) return true if equivalent to [second, second + end - begin)  
   bool equal(bref begin, bref end, bref second);
 
-
   // lzrun
   //
   // leading zero run, for [beg, end) return a bref to the first one encountered
   // else end
   bref lzrun(bref beg, bref end);
   
-  
   // popcount
   //
   // population count of ones in [beg, end), O(ones) complexity
   ureg popcount(bref beg, bref end);
-
 
   // print
   //
@@ -275,77 +279,7 @@ namespace bitstrm {
   std::ostream&
   print(std::ostream& out, bref beg, bref end);
   
-
 # include "bitstrm/bref_impl.hpp"
-  
-  // Illustration and Python program enumerating the ranges of
-  // p[refix]bits and t[otal]bits and also m[antissa]bits and
-  // the implicite base value associated the value of pbits
-
-  
-  // hformat = "{:>7s} ".join("      ")
-  // fformat = "{:7d} ".join("      ")
-  
-  // def first2last2(lst):
-  //     len = lst.__len__()
-  //     if len > 7 :
-  //         first2last2(lst[0:2])
-  //         print("{:^54s}".format("..."))
-  //         print(lst[int(len/2)])
-  //         print("{:^54s}".format("..."))
-  //         first2last2(lst[-2:])
-  //     else:
-  //         for i in lst:
-  //             print(i)
-
-
-  // print(hformat.format("pbits", "mbits", "tbits", "base", "max"))
-  // for pbits in range(1,7):
-  //     lines = []
-  //     for mbits in range(0, 1 << pbits):
-  //         tbits = mbits + pbits
-  //         base = (1 << mbits) -1
-  //         max = 2*base
-  //         lines.append(fformat.format(pbits, mbits, tbits, base, max))
-
-  //     first2last2(lines)
-  
-   // pbits    mbits    tbits     base      max  
-   //     1        0        1        0        0  
-   //     1        1        2        1        2  
-   //     2        0        2        0        0  
-   //     2        1        3        1        2  
-   //     2        2        4        3        6  
-   //     2        3        5        7       14  
-   //     3        0        3        0        0  
-   //     3        1        4        1        2  
-   //                       ...                          
-   //     3        4        7       15       30  
-   //                       ...                          
-   //     3        6        9       63      126  
-   //     3        7       10      127      254  
-   //     4        0        4        0        0  
-   //     4        1        5        1        2  
-   //                       ...                          
-   //     4        8       12      255      510  
-   //                       ...                          
-   //     4       14       18    16383    32766  
-   //     4       15       19    32767    65534  
-   //     5        0        5        0        0  
-   //     5        1        6        1        2  
-   //                       ...                          
-   //     5       16       21    65535   131070  
-   //                       ...                          
-   //     5       30       35  1073741823  2147483646  
-   //     5       31       36  2147483647  4294967294  
-   //     6        0        6        0        0  
-   //     6        1        7        1        2  
-   //                       ...                          
-   //     6       32       38  4294967295  8589934590  
-   //                       ...                          
-   //     6       62       68  4611686018427387903  9223372036854775806  
-   //     6       63       69  9223372036854775807  18446744073709551614 
-  
   
 } // namespace bitstrm
 

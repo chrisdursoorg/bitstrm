@@ -3,7 +3,9 @@
 Implementing codecs, variable codec serialization and algorithms requiring arbitrary bit sized integers (or states) frequently result in having to rewrite bit access operations.  These operations can be difficult to correctly implement particularly with regards to boundary conditions, two's complement arithmetic and branch reduction.  The bitstrm library attempts to address these concerns while providing a clean interface.
 
 ## Version Notes
+
 v1.0.0  - Classic bitstrm, a formally versioned release prior to removal of now depricated functionality and changed interface.
+
 v2.0.0  - (Pending) changes improve the interface by discarding trivial and not so helpful functions and making more consistent arguments in others.
 
 ## Motivation

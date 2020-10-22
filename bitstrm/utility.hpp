@@ -77,7 +77,7 @@ namespace  bitstrm {
     // raising negative numbers to odd value
     ureg isNeg  = ((ureg) v) >> (c_register_bits-1);  // [0] -> 0, [2,3] -> 1 
     ureg negMsk = ((reg)  v) >> (c_register_bits-1);  // [0] -> 0,
-                                                      //   [2,3] -> 0xFF..F
+                                                      // [2,3] -> 0xFF..F
     
     return (((((ureg)~v) & negMsk) | (((ureg)v) & ~negMsk))  << 1) | isNeg;
   }
@@ -86,14 +86,20 @@ namespace  bitstrm {
     return bit_sign_adj(v, std::is_signed<_T>());
   }
 
-  // min bits
+  // min_bits
   //
+  // 2s Compliment Representation of integers of arbitrary length
+  //
+  // returns:
+  //
+  // 0 when val == 0
+  // 
   // The minimum number of bits for unsigned type are those that are
-  // necessrary to retain in order to maintain val
+  // necessary to retain in order to store val
   //
   // The minimum number of bits for signed type are those that are
-  // necessary to retain in order to maintain val, when carrying
-  // (via signextend) the min_bits(val)
+  // necessary to retain in order to maintain val including one
+  // leading signed bit
   //
   // v: 0 -> 0, else v: floor(ln2(v))
   // signed variants, add one signed bit (if not 0)
@@ -150,7 +156,7 @@ namespace  bitstrm {
 
   // bsize_rls
   //
-  // returns the `min` and exact size of bits of val 
+  // returns the exact size of bits of val given rls format (see bref.hpp) 
   inline unsigned bsize_rls(ureg val){
     return min_bits(ureg(val + 1)) - 1;
   }

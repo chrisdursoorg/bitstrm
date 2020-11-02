@@ -4,7 +4,8 @@ enable_testing()
 
 project(bitstrm)
 
-add_definitions("-std=c++17 -Wall -pedantic -Wall -Wextra")
+add_definitions("-std=c++17 -Wall -pedantic -Wall -Wextra -O3")
+
 
 # Uncomment below if Boost is installed and you wish to use
 # unittest or bit_int_itr

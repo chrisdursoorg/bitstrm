@@ -5,7 +5,7 @@
 
 // OPERATORS BEGIN
 inline ureg
-bref::operator*()const { return read_ureg(1); }
+bref::operator*()const { return read<ureg>(1); }
 
 inline bool
 bref::operator==(const bref& rhs)const{
@@ -66,129 +66,42 @@ bref::operator--(int)       { bref r(*this); --m_off; norm(); return r;}
 
 //OPERATORS END
 
-// READ AND WRITE GENERIC
-inline reg
-bref::read_reg  (unsigned bsize) const{
-  bref t(*this); return t.iread_reg (bsize);
+////////////////////////////////////////////////////////////////////////////////
+// CODEC binary and 2's compliment
+
+template<class REG_UREG>
+inline constexpr ureg
+bref::bsize(REG_UREG value){
+  return min_bits(value);
 }
 
-inline reg
-bref::iread_reg(unsigned bsize){ return iread_as_impl<reg>(bsize); }
-
-inline ureg
-bref::iread_ureg(unsigned bsize){ return iread_as_impl<ureg>(bsize); }
-
-inline ureg
-bref::read_ureg (unsigned bsize) const{
-  bref t(*this); return t.iread_ureg(bsize);
+template<>
+inline constexpr ureg bref::max<ureg>(unsigned bsize){
+  return numeric_limits_unsigned_max(bsize);
 }
 
-template<typename INT_TYPE>
-inline INT_TYPE
-bref::read_as   (unsigned bsize)const{
-  bref t(*this); return t.iread_as<INT_TYPE>(bsize);
+template<>
+inline constexpr reg bref::max<reg>(unsigned bsize){
+  return numeric_limits_signed_max(bsize);
 }
 
-#if 0
-template<typename INT_TYPE> 
-inline INT_TYPE
-bref::iread_as  (unsigned ){
-  static_assert(false, "only reg/ureg types permitted");
+template<>
+inline constexpr ureg bref::min<ureg>(unsigned bsize){
+  return numeric_limits_unsigned_min(bsize);
 }
-#endif
 
-template<> reg
-inline bref::iread_as(unsigned bsize){ return iread_as_impl<reg>(bsize);}
-template<> ureg
-inline bref::iread_as(unsigned bsize){
-  return iread_as_impl<ureg>(bsize);
+template<>
+inline constexpr reg bref::min<reg>(unsigned bsize){
+  return numeric_limits_signed_min(bsize);
 }
 
 inline void
-bref::write(unsigned bsize, ureg value) const {
-  bref t(*this); t.iwrite(bsize, value);
-} 
-
-inline ureg
-bref::iread_rls(unsigned sbits){
-  ureg base = (ureg(1) << sbits) - 1;
-  return iread_ureg(sbits) + base;
-}
-
-inline ureg
-bref::iread_rlp(unsigned prefix_bits){
-  ureg suff_bits = iread_ureg(prefix_bits);
-  return iread_rls(suff_bits);
-}
-
-inline ureg
-bref::iread_rlup(){
-  ureg run = ilzrun();
-  operator++();
-  return iread_rls(run);
+bref::write_(ureg value, unsigned bsize) const {
+  bref t(*this); t.iwrite_(value, bsize);
 }
 
 inline void
-bref::iwrite_rls(ureg value, unsigned bsize){
-  ureg base = (ureg(1) << bsize) - 1;
-  assert(base <= value && "verify correct magnitude for value");
-  iwrite(bsize, value - base);
-}
-
-inline void
-bref::iwrite_rlp(ureg value, unsigned prefix_bits){
-  ureg suffix_bits = min_bits(value + 1) - 1;
-  iwrite(prefix_bits, suffix_bits);
-  iwrite_rls(value, suffix_bits);
-}
-
-inline void
-bref::iwrite_rlup(ureg value){
-  ureg suffix_bits = min_bits(value + 1) - 1;
-  iwrite(suffix_bits + 1, 1);
-  iwrite_rls(value, suffix_bits);
-}
-
-// READ AND WRITE GENERIC END
-
-
-// READ WRITE BEGIN
-template<typename _INT_TYPE>
-inline _INT_TYPE
-bref::iread_as_impl(unsigned bsize){
-  assert(bsize <= c_register_bits && "read only defined for regiter bits"); 
-  size_t endpos(m_off + bsize);
-
-  if(endpos < c_register_bits && bsize ){
-    // capture begining but not through first register
-    _INT_TYPE v(endian_adj(*m_addr) << m_off);
-    m_off = endpos;
-    return v >> (c_register_bits - bsize); 
-  } else if(endpos > c_register_bits){
-    
-    // capture finishing first register and begining on second
-    // first registers bits
-    _INT_TYPE v(endian_adj(*m_addr) << m_off);
-    v >>= (c_register_bits-bsize);
-    
-    // second registers bits
-    ++m_addr;
-    m_off = endpos - c_register_bits;
-    return v | ((ureg)(endian_adj(*m_addr))) >> (c_register_bits - m_off);
-
-  } else if( endpos == c_register_bits){
-    // capture begining and exactly through first register    
-    _INT_TYPE v(endian_adj(*m_addr) << m_off);
-    v >>= m_off; 
-    ++m_addr;
-    m_off = 0;
-    return v;
-  }  
-  return 0;  // bitsize == 0 
-}
-
-inline void
-bref::iwrite(unsigned bsize, ureg value){
+bref::iwrite_(ureg value, unsigned bsize){
   
   assert(bsize <= c_register_bits &&
          "defined for at most register bits");
@@ -228,7 +141,193 @@ bref::iwrite(unsigned bsize, ureg value){
   }
 }
 
-// READ WRITE END
+template<typename REG_UREG>
+inline REG_UREG
+bref::read(unsigned bsize) const{
+  bref t(*this); return t.iread<REG_UREG>(bsize);
+}
+
+template<typename REG_UREG>
+inline REG_UREG
+bref::iread(unsigned bsize){
+  assert(bsize <= c_register_bits && "read only defined for regiter bits"); 
+  size_t endpos(m_off + bsize);
+
+  if(endpos < c_register_bits && bsize ){
+    // capture begining but not through first register
+    REG_UREG v(endian_adj(*m_addr) << m_off);
+    m_off = endpos;
+    return v >> (c_register_bits - bsize); 
+  } else if(endpos > c_register_bits){
+    
+    // capture finishing first register and begining on second
+    // first registers bits
+    REG_UREG v(endian_adj(*m_addr) << m_off);
+    v >>= (c_register_bits-bsize);
+    
+    // second registers bits
+    ++m_addr;
+    m_off = endpos - c_register_bits;
+    return v | ((ureg)(endian_adj(*m_addr))) >> (c_register_bits - m_off);
+
+  } else if( endpos == c_register_bits){
+    // capture begining and exactly through first register    
+    REG_UREG v(endian_adj(*m_addr) << m_off);
+    v >>= m_off; 
+    ++m_addr;
+    m_off = 0;
+    return v;
+  }  
+  return 0;  // bitsize == 0 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// CODEC RLS (run length specified)
+
+template<>
+inline constexpr ureg
+bref::bsize_rls(ureg value){
+  return bref::bsize<ureg>(value + 1) - 1;
+}
+
+template<>
+inline constexpr ureg
+bref::bsize_rls(reg value){
+  value = (value < 0) ? -value : value;
+  return bref::bsize<ureg>(value);
+}
+
+template<>
+inline constexpr ureg bref::max_rls<ureg>(unsigned bsize){
+  ureg base = (ureg(1) << bsize) - 1;
+  return bref::max<ureg>(bsize) + base;
+}
+
+template<>
+inline constexpr reg bref::max_rls<reg>(unsigned bsize){
+  if(bsize == 0)
+    return 0;
+  
+  ureg base = ureg(1) << (bsize-1);
+  return bref::max<reg>(bsize) + base;
+}
+
+template<>
+inline constexpr ureg bref::min_rls<ureg>(unsigned bsize){
+  ureg base = (ureg(1) << bsize) - 1;
+  return bref::min<ureg>(bsize) + base;
+}
+
+template<>
+inline constexpr reg bref::min_rls<reg>(unsigned bsize){
+  if(bsize == 0 )
+    return 0;
+      
+  reg base  = reg(1)-(reg(1) << (bsize-1));
+  return bref::min<reg>(bsize) + base;
+}
+
+template<>
+inline void
+bref::iwrite_rls<ureg>(ureg value, unsigned bsize){
+  ureg base = (ureg(1) << bsize) - 1;
+  assert(base <= value && "verify correct magnitude for value");
+  iwrite_(value - base, bsize);
+}
+
+template<>
+inline void
+bref::iwrite_rls<reg>(reg value, unsigned bsize){
+  reg base = (value < 0) ? (reg(1) - (reg(1) << (bsize-1)))
+    : (reg(1) << (bsize-1));
+  iwrite_(value - base, bsize);
+}
+
+template<>
+inline ureg
+bref::iread_rls<ureg>(unsigned bsize){
+  ureg base = (ureg(1) << bsize) - 1;
+  return iread<ureg>(bsize) + base;
+}
+
+template<>
+inline reg
+bref::iread_rls<reg>(unsigned bsize){
+  if(bsize == 0)
+    return 0;
+  
+  reg relative  = iread<reg>(bsize);
+  --bsize;
+  reg base = (relative < 0) ? (reg(1)-(reg(1) << bsize)):(reg(1) << bsize);
+  return relative + base;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// CODEC RLE (run length encoded)
+
+template<class SIGNED_UNSIGNED>
+inline constexpr ureg
+bref::bsize_rle(SIGNED_UNSIGNED value, unsigned kbit){
+  unsigned part = std::max<ureg>(1, ((bsize(value) + kbit - 1 - 1)/(kbit-1)));
+  return part*kbit;
+}
+
+
+template<class REG_UREG>
+inline constexpr REG_UREG bref::max_rle(unsigned bsize, unsigned kbit){
+  assert(kbit > 1 );
+  
+  unsigned packets    = (bsize + kbit -1)/kbit;
+  unsigned tot_packet = packets*kbit;
+
+  return bref::max<REG_UREG>(tot_packet);
+}
+
+template<class REG_UREG>
+inline constexpr REG_UREG bref::min_rle(unsigned bsize, unsigned kbit){
+  assert(kbit > 1 );
+  
+  unsigned packets    = (bsize + kbit -1)/kbit;
+  unsigned tot_packet = packets*kbit;
+
+  return bref::min<REG_UREG>(tot_packet);
+}
+
+template<typename REG_UREG>
+inline REG_UREG
+bref::iread_rle(unsigned kbit){
+  assert(kbit > 1 && "kbit < 2 undefined");
+  assert(kbit < (c_register_bits-1) && "nonsensical to even approach c_register_bits");
+  --kbit;
+  ureg next  = iread<ureg>(1);
+  ureg value = iread<REG_UREG>(kbit);
+  for(;next; ){ 
+    value <<= kbit;
+    next = iread<ureg>(1);
+    value |= iread<ureg>(kbit);
+  };
+  return value;
+}
+
+template<class REG_UREG>
+inline void
+bref::iwrite_rle(REG_UREG value, unsigned kbit){
+  assert(kbit > 1 && "kbit < 2 undefined");
+  assert(kbit < (c_register_bits-1) && "nonsensical to even approach c_register_bits");
+    
+  const unsigned pbit = kbit -1;
+  unsigned       part_count  = std::max(((bsize(value) + pbit - 1) / pbit), ureg(1)); 
+  unsigned       shift_right = (part_count-1)*pbit;
+  const ureg     term        = (ureg(1) << pbit);
+
+  for(; part_count > 1; shift_right -= pbit, --part_count)
+    iwrite_(term | (value >> shift_right), kbit);
+
+  iwrite_(((value >> shift_right) & ~term), kbit);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 
 /*static*/
@@ -270,7 +369,7 @@ inline uint32_t op_clz<uint32_t>(uint32_t i ){ return i ? __builtin_clz(i): 32; 
 
 
 inline unsigned
-bref::ilzrun(){
+bref::iclz(){
   
   // first shift left so pos[+0] is MSB
   ureg  cur(endian_adj(*m_addr) << m_off);
@@ -280,7 +379,7 @@ bref::ilzrun(){
   
   if( run < remaining ){
     // count complete on current register
-    m_off += run;
+    m_off += (run + 1);
     norm();
     return run;
   }
@@ -293,103 +392,50 @@ bref::ilzrun(){
     run  += locRun;
   } while(locRun == c_register_bits);  
 
-  m_off = locRun;
+  m_off = (locRun + 1);
   norm();
   return run;
 }
 
-inline ureg
-bref::iread_rle (unsigned kbit){
-  assert(kbit > 1 &&
-	 "kbit == 1 trivial only able to store 0, kbit == 0 undefined");
-  --kbit;
-  ureg value = 0;
-  ureg next; 
-  do {
-    next = iread_ureg(1);
-    value <<= kbit;
-    value |= iread_ureg(kbit);
-  } while(next);
-  return value;
-}
-
-inline reg 
-bref::iread_rles(unsigned kbit){
-  assert(kbit > 1 &&
-	 "kbit == 1 trivial only able to store 0, kbit == 0 undefined");
-  --kbit;
-  reg      value = 0;
-  ureg     next;
-  unsigned pay   = 0;
-  do{
-    next = iread_ureg(1);
-    value <<= kbit;
-    pay   += kbit;
-    value |= iread_ureg(kbit);
-  }while(next);
-
-  // now pad left with signed bit
-  unsigned header = c_register_bits - pay - 1;
-  return (value << header) >> header; 
-}
-
-template<class SIGNED_UNSIGNED>
-inline void
-bref::iwrite_rle(SIGNED_UNSIGNED value, unsigned kbit){
-  assert(kbit > 1 &&
-	 "kbit == 1 trivial only able to store 0, kbit == 0 undefined");
-    
-  const unsigned pbit = kbit -1;
-  unsigned       part_count  = std::max(((min_bits(value) + pbit - 1) / pbit), ureg(1)); 
-  unsigned       shift_right = (part_count-1)*pbit;
-  const ureg     term        = (1 << pbit);
-
-  for(; part_count > 1; shift_right -= pbit, --part_count)
-    iwrite(kbit, term | ((value >> shift_right) & ~term));
-
-  iwrite(kbit, ((value >> shift_right) & ~term));
-}
 
 
-///////////////////////////////////////////////////////////////////////////////////
-
-// TODO: copy/equal optimization! two things to manage
-// 0) begin/end bits,
-// 1) intra word allignment
-// perhaps half register operation and "bit-alligned" special case 
+// TODO: copy optimization! 
+// 0) copy x bits src until dst 1/2 register allignment
+// 1) shift right src by x, copy rh 1/2 register to dst
+// 2) repeat 1 until src.addr == end.addr
+// 3) copy src x bits to dst 
 //
 inline 
 bref 
 copy(bref begin, bref end, bref dest){
   
-  reg size = bref::subtract(end, begin);
-  for(;size >= c_register_bits; size -= c_register_bits)
-    dest.iwrite(c_register_bits, begin.iread_ureg(c_register_bits));
+  reg bsize = bref::subtract(end, begin);
+  for(;bsize >= c_register_bits; bsize -= c_register_bits)
+    dest.iwrite_(begin.iread<ureg>(c_register_bits), c_register_bits);
 
-  if(size)
-    dest.iwrite(size, begin.iread_ureg(size));
+  dest.iwrite_(begin.iread<ureg>(bsize), bsize);
  
   return dest;
 }
 
-// optimization! two things to manage 0) begin/end bits, 1) intra byte allignment  
+// TODO: follow copy allignment optimization
 inline 
 bool 
 equal(bref begin, bref last, bref second){
   
   reg size = bref::subtract(last, begin);
   for(;size >= c_register_bits; size -= c_register_bits)
-    if( second.iread_ureg(c_register_bits) !=  begin.iread_ureg(c_register_bits))
+    if( second.iread<ureg>(c_register_bits) !=  begin.iread<ureg>(c_register_bits))
       return false;
 
-  if( size && (second.iread_ureg(size) !=  begin.iread_ureg(size)))
+  if( size && (second.iread<ureg>(size) !=  begin.iread<ureg>(size)))
     return false;
  
   return true;
 }
 
 inline bref
-lzrun(bref beg, bref end){
+clz(bref beg, bref end){
   reg* addr = beg.m_addr;
   // first shift left so pos[+0] is MSB
   ureg  cur(endian_adj(*addr) << beg.m_off);
@@ -441,24 +487,8 @@ popcount(bref cur, bref end){
   return count;
 }
 
-// advance
-//
-// advance forward to the ord(th) set bit value else end
-// end(less) version is well defined when ord count of bits in defined
-//
-// Performance - perhaps should special case out advance 1 with clz implementation
 
-inline bref advance(bref cur, bref end, ureg cnt){
 
-  for(;cnt != 0; cur = bitstrm::lzrun(++cur, end), --cnt );
-  
-  return cur;
-}
 
-inline bref advance(bref cur, ureg cnt){
 
-  for(;cnt != 0; (++cur).ilzrun(), --cnt );
-
-  return cur;
-}
 

@@ -131,8 +131,8 @@ namespace bitstrm {
     unsigned     bitsz_;
     SIGN_UNSIGN  value_;
     SIGN_UNSIGN  old_value_;
-    inline void  read()  { old_value_ = value_ = p_.read_as<SIGN_UNSIGN>(bitsz_); }
-    inline void  write() { if(value_ != old_value_ ) p_.write(bitsz_, value_); } 
+    inline void  read()  { old_value_ = value_ = p_.read<SIGN_UNSIGN>(bitsz_); }
+    inline void  write() { if(value_ != old_value_ ) p_.write_(value_, bitsz_); } 
 
   public:
     // delete: for the time being, let us be as restrictive as we can
@@ -195,7 +195,7 @@ namespace bitstrm {
     }
 
     ref_type gen_ref(int bsize, bref cur){
-      return m_value = cur.read_as<SIGNED_UNSIGNED>(bsize);
+      return m_value = cur.read<SIGNED_UNSIGNED>(bsize);
     }
 
     constexpr static bool is_const_itr = true;

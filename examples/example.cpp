@@ -84,13 +84,13 @@ int main(int /*argc*/, const char** /*argv*/){
   for(auto a : data){
     if(should_resize(a, cur_bits, wasted_bits)){
       if(!first)
-	cur.iwrite(1, 1);
-      cur.iwrite(6, cur_bits);
+	cur.iwrite_(1, 1);
+      cur.iwrite_(cur_bits, 6);
     }
     else {
-      cur.iwrite(1, 0);
+      cur.iwrite_(0, 1);
     }
-    cur.iwrite(cur_bits, a);
+    cur.iwrite_(a, cur_bits);
     first = false;
   }
   
@@ -105,10 +105,10 @@ int main(int /*argc*/, const char** /*argv*/){
   bool read_bit_size = true;
   for(auto a : data){
     if(!read_bit_size)
-      read_bit_size = cur.iread_ureg(1);
+      read_bit_size = cur.iread<ureg>(1);
     if(read_bit_size)
-      cur_bits = cur.iread_ureg(6);
-    ureg restore = cur.iread_ureg(cur_bits);
+      cur_bits = cur.iread<ureg>(6);
+    ureg restore = cur.iread<ureg>(cur_bits);
     cout << "restore: " << restore << " matches: " << a <<  endl;
     assert(restore == a);
     read_bit_size = false;

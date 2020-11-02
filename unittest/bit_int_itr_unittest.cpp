@@ -31,23 +31,23 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
   const char sentry = 42;                   // set "magic number" to see that neither front nor back is overwritten
   alloced_bref buf (numbers_bsize + 2*8);
   alloced_bref buf2(numbers_bsize + 2*8);
-  buf .iwrite(8, sentry);                   // mark the ends for later;
-  buf2.iwrite(8, sentry);
-  (buf  +  numbers_bsize).write(8, sentry);
-  (buf2 +  numbers_bsize).write(8, sentry);
+  buf .iwrite_(sentry, 8);                   // mark the ends for later;
+  buf2.iwrite_(sentry, 8);
+  (buf  +  numbers_bsize).write_(sentry, 8);
+  (buf2 +  numbers_bsize).write_(sentry, 8);
   
 
   bit_int_itr<13,reg> bc(buf2);
   bit_int_itr<13,reg> be(buf2+numbers_bsize);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [bitSz,&buf](int v) { buf.iwrite(bitSz, v); });
+  for_each(container.begin(), container.end(), [bitSz,&buf](int v) { buf.iwrite_(v, bitSz); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
   buf .reset();
   buf2.reset();
-  BOOST_CHECK(buf.iread_reg(8) == sentry && buf2.iread_reg(8) == sentry);
-  BOOST_CHECK((buf  + numbers_bsize).iread_reg(8) == sentry);
-  BOOST_CHECK((buf2 + numbers_bsize).iread_reg(8) == sentry);
+  BOOST_CHECK(buf.iread<reg>(8) == sentry && buf2.iread<reg>(8) == sentry);
+  BOOST_CHECK((buf  + numbers_bsize).iread<reg>(8) == sentry);
+  BOOST_CHECK((buf2 + numbers_bsize).iread<reg>(8) == sentry);
   BOOST_TEST_MESSAGE("lots of different ways to be equal");
   buf .reset();
   buf2.reset();
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways_boost_style )
   bit_int_itr<bitSz, ureg> bc(p2);
   bit_int_itr<bitSz, ureg> be(pe);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [&p](containerType::value_type value) { p.iwrite(bitSz, value); });
+  for_each(container.begin(), container.end(), [&p](containerType::value_type value) { p.iwrite_(value, bitSz); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
   BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_with_dynamic_bsize_ways_boost_s
   dbit_int_itr<ureg> bc(p2, bitSz*1);
   dbit_int_itr<ureg> be(pe, bitSz*1);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
+  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite_(value, bitSz); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
   BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
@@ -177,8 +177,8 @@ BOOST_AUTO_TEST_CASE( sort_values )
   unsigned numbers_bsize = bitSz*container.size();
   alloced_bref buf(numbers_bsize + 2*8 + 64); // keep some extra space for 8 bit padding
   const char sentry = 42;                // "magic number" to see that front and back are preserved
-  buf.write(8,sentry);
-  (buf + 8 + numbers_bsize).write(8, sentry);
+  buf.write_(sentry, 8);
+  (buf + 8 + numbers_bsize).write_(sentry, 8);
   bref p(buf + 8); 
   bref p0(p);                            // bitstream to start after "magic number"
   bref pe(p0 + numbers_bsize);           // and continues until back "magic number"
@@ -186,14 +186,14 @@ BOOST_AUTO_TEST_CASE( sort_values )
   bit_int_itr<13,reg> bc(p0);
   bit_int_itr<13,reg> be(pe);
   
-  for_each(container.begin(), container.end(), [bitSz,&p](int value) { p.iwrite(bitSz, value); });
+  for_each(container.begin(), container.end(), [bitSz,&p](int value) { p.iwrite_(value, bitSz); });
   stringstream str;
   str << "pre-sort: "; for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
   BOOST_TEST_MESSAGE(str.str());
   BOOST_CHECK(equal(container.begin(),container.end(), bc));
   sort(bc, be);
-  BOOST_CHECK(buf.read_reg(8) == sentry);
-  BOOST_CHECK(pe .read_reg(8) == sentry);
+  BOOST_CHECK(buf.read<reg>(8) == sentry);
+  BOOST_CHECK(pe .read<reg>(8) == sentry);
   str.str("");
   str << "pst-sort: "; for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
   BOOST_TEST_MESSAGE(str.str());
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
   bref p0(p);
   bref pe(p + container.size()*bitSz);
 
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(bitSz, value); });
+  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite_(value, bitSz); });
   BOOST_CHECK(p == pe);
   BOOST_CHECK(buf.front() == sentry);
   BOOST_CHECK(buf.back() == sentry);
@@ -423,7 +423,7 @@ BOOST_AUTO_TEST_CASE(example_2){
   bref check(&buf2.front());  // dereferencing a bref acts as a bit vector
   for_each(beg, end, [&check](ureg val){
       BOOST_CHECK(*(check + val) == 0);
-      (check + val).write(1, 1);
+      (check + val).write_(1, 1);
     });
 
   BOOST_TEST_MESSAGE("by virtue of the count and completeness, we have found "

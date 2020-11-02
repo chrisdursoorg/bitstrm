@@ -4,11 +4,11 @@ enable_testing()
 
 project(bitstrm)
 
-add_definitions("-std=c++11 -Wall -pedantic -Wall -Wextra")
+add_definitions("-std=c++17 -Wall -pedantic -Wall -Wextra")
 
 # Uncomment below if Boost is installed and you wish to use
 # unittest or bit_int_itr
-#set(USE_BOOST "TRUE")
+set(USE_BOOST "TRUE")
 
 
 set(HEADER_FILES  ${CMAKE_CURRENT_SOURCE_DIR}/bitstrm)

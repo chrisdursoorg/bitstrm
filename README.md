@@ -4,6 +4,7 @@ Implementing codecs, variable codec serialization and algorithms requiring arbit
 
 ## Version Notes
 v1.0.0  - Classic bitstrm, a formally versioned release prior to removal of now depricated functionality and changed interface.
+
 v2.0.0  - (Pending) changes improve the interface by discarding trivial and not so helpful functions and making more consistent arguments in others.
 
 ## Motivation

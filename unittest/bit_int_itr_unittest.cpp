@@ -14,6 +14,7 @@
 #include <limits>
 #include <algorithm>
 #include <iostream>
+#include <random>
 
 using namespace boost::unit_test;
 using namespace bitstrm;
@@ -415,7 +416,10 @@ BOOST_AUTO_TEST_CASE(example_2){
   BOOST_CHECK((end - beg) == 1024);
   unsigned i = 0;
   for(auto cur = beg; cur != end; ++cur){ *cur = i++; }
-  random_shuffle(beg, end);
+
+  random_device rd;
+  mt19937 g(rd());
+  shuffle(beg, end, g);
   
   BOOST_TEST_MESSAGE("check to see that each value is represented exactly once"
                      );
@@ -442,7 +446,9 @@ BOOST_AUTO_TEST_CASE(code_example_1){
   for(auto cur = beg; cur != end; ++cur, ++i)
     *cur = i;
 
-  random_shuffle(beg, end);
+  random_device rd;
+  mt19937 g(rd());
+  shuffle(beg, end, g);
 
   // fill check array with zero's 
   alloced_bref checkbuf(1024);
@@ -473,7 +479,10 @@ BOOST_AUTO_TEST_CASE(code_example_2){
   dbit_int_itr<ureg> end(beg + (1 << k));
   unsigned i = 0;
   for(auto cur = beg; cur != end; ++cur){ *cur = i++; }
-  random_shuffle(beg, end);
+
+  random_device rd;
+  mt19937 g(rd());
+  shuffle(beg, end, g);
 
   // fill check array with zero's 
   alloced_bref checkbuf(1024);

@@ -131,8 +131,8 @@ namespace bitstrm {
     unsigned     bitsz_;
     SIGN_UNSIGN  value_;
     SIGN_UNSIGN  old_value_;
-    inline void  read()  { old_value_ = value_ = p_.read_as<SIGN_UNSIGN>(bitsz_); }
-    inline void  write() { if(value_ != old_value_ ) p_.write(bitsz_, value_); } 
+    inline void  read()  { old_value_ = value_ = p_.read<SIGN_UNSIGN>(bitsz_); }
+    inline void  write() { if(value_ != old_value_ ) p_.write(value_, bitsz_); } 
 
   public:
     // delete: for the time being, let us be as restrictive as we can
@@ -195,7 +195,7 @@ namespace bitstrm {
     }
 
     ref_type gen_ref(int bsize, bref cur){
-      return m_value = cur.read_as<SIGNED_UNSIGNED>(bsize);
+      return m_value = cur.read<SIGNED_UNSIGNED>(bsize);
     }
 
     constexpr static bool is_const_itr = true;
@@ -253,6 +253,15 @@ namespace bitstrm {
     bit_int_base_itr(const RHS_BIT_INT_ITR& rhs)
       : m_bsize(rhs.m_bsize), m_cur(rhs.m_cur), m_ref(rhs.m_ref){}
 
+    bit_int_base_itr(const bref& beg, int bsize)
+      : m_bsize(bsize), m_cur(beg) {
+      
+      static_assert(BSIZE == -1, "see notes on bit_int_base_itr"
+                              ", using this ctor you must have BSIZE defined as"
+                              "-1");
+      assert(bsize <= (int)c_register_bits  && "dynamic bsize beyond the c_register_bits");
+    }
+
     template<class RHS_BIT_INT_ITR>
     bit_int_base_itr& operator=(const RHS_BIT_INT_ITR& rhs){
       typedef boost::is_same<value_type, typename RHS_BIT_INT_ITR::value_type> same_value_type;
@@ -274,16 +283,7 @@ namespace bitstrm {
       
       return *this;
     }
-    
-    bit_int_base_itr(const bref& beg, int bsize)
-      : m_bsize(bsize), m_cur(beg) {
-      
-      static_assert(BSIZE == -1, "see notes on bit_int_base_itr"
-                              ", using this ctor you must have BSIZE defined as"
-                              "-1");
-      assert(bsize <= (int)c_register_bits  && "dynamic bsize beyond the c_register_bits");
-    }
-    
+        
   private:
 
     friend class boost::iterator_core_access;

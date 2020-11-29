@@ -5,4 +5,7 @@
 
 #cmake
 cmake_debug
+cmake-build-debug
 cmake_release
+
+*idea

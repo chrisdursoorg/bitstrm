@@ -24,16 +24,16 @@ namespace  bitstrm {
 
   // numeric_limits_signed
   // given bsize:{_min, _max} = {-(2^(n-1), 2^(n-1)-1 } 
-  inline reg  numeric_limits_signed_min  (unsigned bsize) {
+  inline constexpr reg  numeric_limits_signed_min  (unsigned bsize) {
     return bsize ? -( reg(1) << (bsize-1))        : 0;
   } 
-  inline reg  numeric_limits_signed_max  (unsigned bsize) {
+  inline constexpr reg  numeric_limits_signed_max  (unsigned bsize) {
     return bsize ?  ((reg(1) << (bsize-1)) - 1 )  : 0;
   } 
-  inline ureg numeric_limits_unsigned_min(unsigned ) {
+  inline constexpr ureg numeric_limits_unsigned_min(unsigned ) {
     return  0;
   } 
-  inline ureg numeric_limits_unsigned_max(unsigned bsize) {
+  inline constexpr ureg numeric_limits_unsigned_max(unsigned bsize) {
     return bsize ?  ((ureg)((ureg(1) << (bsize - 1)) << 1) -1)  : 0;
   } 
 
@@ -43,7 +43,7 @@ namespace  bitstrm {
   // 'http://graphics.stanford.edu/~seander/bithacks.html#IntegerAbs'
   // fails with (as does std::abs) for MIN_INT due to overflow
   template<typename _T>
-  inline typename std::make_unsigned<_T>::type abs(_T v) {
+  inline constexpr typename std::make_unsigned<_T>::type abs(_T v) {
     _T const mask = v >> ((sizeof(_T)*CHAR_BIT)-1); return (v+mask)^mask;
   } 
 
@@ -64,10 +64,10 @@ namespace  bitstrm {
   // for signed bit space Always valid, e.g. {max,min} signed int will
   // result in word number of bits, 0->0, etc.
   template<typename _T>
-  inline ureg bit_sign_adj(_T v, std::false_type)  { return v;}
+  inline constexpr ureg bit_sign_adj(_T v, std::false_type)  { return v;}
 
   template<typename _T>
-  inline ureg bit_sign_adj(_T v, std::true_type) { 
+  inline constexpr ureg bit_sign_adj(_T v, std::true_type) { 
     // LOGIC TABLE, note we only care about msb
     //  GIVEN        RETURN
     //   v >= 0   => v << 1;
@@ -82,7 +82,7 @@ namespace  bitstrm {
     return (((((ureg)~v) & negMsk) | (((ureg)v) & ~negMsk))  << 1) | isNeg;
   }
     
-  template<typename _T> inline ureg bit_sign_adj(_T v) {
+  template<typename _T> inline constexpr ureg bit_sign_adj(_T v) {
     return bit_sign_adj(v, std::is_signed<_T>());
   }
 
@@ -104,48 +104,49 @@ namespace  bitstrm {
   // v: 0 -> 0, else v: floor(ln2(v))
   // signed variants, add one signed bit (if not 0)
   // _ITR a != b, otherwise result would not be defined!
-  template<typename _T>  ureg min_bits(_T val);
+  template<typename _T>
+  constexpr ureg min_bits(_T val);
 
 ////////////////////////////////////////////////////////////////////////////////        
   template<>
-  inline ureg
+  inline constexpr ureg
   min_bits<unsigned int>      (unsigned int v)      {
     return v ? static_cast<ureg>( (sizeof(unsigned)*CHAR_BIT)
                                   - __builtin_clz (v))   : 0;
   }
   template<>
-  inline ureg
+  inline constexpr ureg
   min_bits<unsigned long >    (unsigned long v)     {
     return v ? static_cast<ureg>( (sizeof(unsigned long)*CHAR_BIT)
                                   - __builtin_clzl (v))  : 0;
   }
   template<>
-  inline ureg
+  inline constexpr ureg
   min_bits<unsigned long long>(unsigned long long v){
     return v ? static_cast<ureg>( (sizeof(unsigned long long)*CHAR_BIT)
                                   - __builtin_clzll(v))  : 0;
   }
   template<>
-  inline ureg
+  inline constexpr ureg
   min_bits<signed int>        (signed int v)        {
     return v ? static_cast<ureg>( (sizeof(signed int)*CHAR_BIT)
                                   - __builtin_clz  (bit_sign_adj(v))) : 0;
   }
   template<>
-  inline ureg
+  inline constexpr ureg
   min_bits<signed long >      (signed long v)       {
     return v ? static_cast<ureg>( (sizeof(signed  long)*CHAR_BIT)
                                   - __builtin_clzl (bit_sign_adj(v))) : 0;
   }
   template<>
-  inline ureg
+  inline constexpr ureg
   min_bits<signed long long>  (signed long long v)  {
     return v ? static_cast<ureg>( (sizeof(signed  long long)*CHAR_BIT)
                                   - __builtin_clzll(bit_sign_adj(v))) : 0;
   }
   
   template<typename _ITR>
-  inline unsigned min_bits(_ITR b, _ITR e){ 
+  inline constexpr unsigned min_bits(_ITR b, _ITR e){ 
     ureg v(0); 
     
     while( !(b == e)) 
@@ -154,14 +155,9 @@ namespace  bitstrm {
     return min_bits(v);
   }
 
-  // bsize_rls
-  //
-  // returns the exact size of bits of val given rls format (see bref.hpp) 
-  inline unsigned bsize_rls(ureg val){
-    return min_bits(ureg(val + 1)) - 1;
-  }
-
   // signextend
+  //
+  // C/C++ black magic bit field behavior extends sign @ BIT_COUNT to T
   //
   // http://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
   // Signed extention from BIT_COUNT bit width to bit width of type T
@@ -169,47 +165,22 @@ namespace  bitstrm {
   // {true_type, false_type} variants {handle, no-op is_signed(x)}
   // respectively
   template <typename T, unsigned BIT_COUNT>
-  inline T
+  inline constexpr T
   signextend(const T x) {
-    struct {T x:BIT_COUNT;} s;
+    // sba should_be_anonymous
+    struct sba{sba(){}; T x:BIT_COUNT;} s;
     return s.x = x;
   }
     
   template<typename T, unsigned BIT_COUNT>
-  inline T
+  inline constexpr T
   signextend(const T x, std::true_type){
     return signextend<T, BIT_COUNT>(x);
   }
   
   template<typename T, unsigned BIT_COUNT>
-    inline T signextend (const T x, std::false_type){
+    inline constexpr T signextend (const T x, std::false_type){
     return x;
-  }
-
-  // max_value_rlp
-  //
-  // given a specified bsize of prefix return the maximum
-  // value stored
-  inline constexpr ureg max_value_rlp(ureg bsize_prefix){
-    return 2*(( ureg(1) << ( (1 << bsize_prefix) - 1)) -1);
-  }
-
-  // bsize_rlp
-  //
-  // given the value an and the prefix size return the bsize of
-  // a rlp encoding
-  inline ureg bsize_rlp(ureg value,
-                        ureg bsize_prefix = c_register_bit_addr_sz){
-    assert(value <= max_value_rlp(bsize_prefix) &&
-           "capacity unsupported by prefix");
-
-    return min_bits(value + 1) - 1 + bsize_prefix;
-  }
-  
-
-  inline ureg bsize_rlup(ureg value){
-  ureg suffix_bits = min_bits(value + 1) - 1;
-  return 2*suffix_bits + 1;
   }
 
 }

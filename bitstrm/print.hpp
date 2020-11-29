@@ -42,7 +42,7 @@ namespace bitstrm {
 
     out << 'b';
     for(; cur != end;)
-      out << cur.iread_ureg(1);
+      out << cur.iread<ureg>(1);
       
     return out;
   }

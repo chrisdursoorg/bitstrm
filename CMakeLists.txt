@@ -4,11 +4,23 @@ enable_testing()
 
 project(bitstrm)
 
-add_definitions("-std=c++11 -Wall -pedantic -Wall -Wextra")
+add_definitions("-std=c++17 -Wall -pedantic -Wall -Wextra")
+
+IF(NOT DEFINED ${CMAKE_BUILD_TYPE})
+    message ("defaulting to Release mode, do you want -DCMAKE_BUILD_TYPE='Debug' ?")
+ENDIF()
+
+IF(CMAKE_BUILD_TYPE MATCHES Debug)
+    message("Debug build.")
+    add_definitions("-O0 -g")
+ELSE()
+    message("Release build.")
+    add_definitions("-O3 -Ofast")
+ENDIF()
 
 # Uncomment below if Boost is installed and you wish to use
 # unittest or bit_int_itr
-#set(USE_BOOST "TRUE")
+set(USE_BOOST "TRUE")
 
 
 set(HEADER_FILES  ${CMAKE_CURRENT_SOURCE_DIR}/bitstrm)

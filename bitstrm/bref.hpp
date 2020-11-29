@@ -144,8 +144,8 @@ namespace bitstrm {
     // rls_write must be exactly bref::bsize_rls<REG_UREG>(value)
     //
 
-    void write_      (ureg signed_or_unsigned_value, unsigned bsize) const;
-    void iwrite_     (ureg signed_or_unsigned_value, unsigned bsize);
+    void write      (ureg signed_or_unsigned_value, unsigned bsize) const;
+    void iwrite     (ureg signed_or_unsigned_value, unsigned bsize);
     template<class REG_UREG>
     void iwrite_rls (REG_UREG value, unsigned bsize);
     template<class REG_UREG>

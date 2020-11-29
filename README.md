@@ -5,22 +5,23 @@ Implementing codecs, variable codec serialization and algorithms requiring arbit
 ## Version Notes
 v1.0.0  - Classic bitstrm, a formally versioned release prior to removal of now depricated functionality and changed interface.
 
-v2.0.0  - (Pending) changes improve the interface by discarding trivial and not so helpful functions and making more consistent arguments in others.
+v2.0.0  - Changes improve the interface by discarding trivial funtionarlity and by making more consistent arguments in others.
+
+**Upgrading to v2.  The central method `bref::iwrite(size, value)` has had arguements swapped to `bref::iwrite(value, size)` for consistency of the interface.  Your pre v2 code will likely compile without complaint but result in unspecified behavior.  When upgrading legacy code consider temporarily renaming `write` and carefully transposing these arguments utilizing the resulting compiler errors to be sure you have updated each one.  The other ubiquitous change is `bref::read<>`, but this will solicit compiler errors already**
 
 ## Motivation
 
 The primary motivation for compression is to improve performance and or permit problems that would otherwise exceed memory capacity to be solved.  Improvement of performance may often be achieved by reducing transit to and from from slower memory sources and deposits.  Additional mechanisms for performance improvement include, increasing the information density, particularly in conjunction with improvemnets in data locality to win the optimization either at the CPU memory bus level or at the CPU persistent memory/rack/switch level. Further improvements in data density may permit advanced (and typically larger) or additional data structures to reside in the same or smaller memory footprint as their less performant counterparts. 
 
-The Bitstrm library may be used directly or to an built up a codec or datastructure.
+The Bitstrm library may be used directly or to an built up a codec or binary datastructure that is not limited to 2^x byte boundries.
 
 ## Optimization
 
-Effort has been made to reduce branch operations epecially within bref access, but not a lot of optimization or tuning otherwise.  With just a cursory look (commit dd3a315a05eac7f4a97d5747a114436d18d4eda3, Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz on VB6.0 fedora:32) I am seeing a 1.02-6 times penalty for using the bitstrm library. In defence, early commits of this library were capable of performance acceleration with only a little fiddling of the challange size on a 2012 vintage Macbook Air.  Comparison of bitstrm against 2 byte words results (instead of 8 byte) yeilds nearly identical results indicating that main RAM latency is not even being significanlty driven on the new(er) CPU.
-
+Effort has been made to reduce branch operations epecially within bref access, but not a lot of optimization or tuning otherwise.  With just a cursory look (commit dd3a315a05eac7f4a97d5747a114436d18d4eda3, Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz on VB6.0 fedora:32) I am seeing a 1.02-6 times penalty for using the bitstrm library. Earlier commits of this library run on legacy harware were capable of performance acceleration with only a little fiddling of the challange size.  Comparison of bitstrm against 2 byte words results (instead of 8 byte) yeilds nearly identical results indicating that main RAM latency is not even being significanlty driven on new(er) CPUs.
 
 ## Implementation
 
-Implemented primarily as header only library initially to and likely `-std=c++11` compatible.  Current use and testing have been using `-std=c++17`,  but would be reasonable to maintain c++11 and remedy any reported standard related defects. 
+Implemented primarily as header only library `-std=c++17`.  It would be reasonable to maintain a `c++11` version if desired.
 
 This code offers lightweight compilation (e.g. avoiding weighty `std::ostream` for print comes in with optionally such as with `#include "/bitstrm/print.hpp"` inclusion ).  Note that I've included a few references to `boost_1_57`.  They may be omitted when you pare down the library by removing the iterator and unittest portions.  Optional example code and boost style unit testing can be built with `cmake`.
 
@@ -30,11 +31,9 @@ This code offers lightweight compilation (e.g. avoiding weighty `std::ostream` f
 * pointer and iterator _lightweight accessor_ behavior (i.e. can work directly in std algorithms)
 * integrated endian transform for integers to and from byte stream
 * unsigned and two's compliment conversinon an arbitrary k-bit, k:[0,register) integers
-* runlengh specified(rls) separates the magnitude from the mantissa, thus {'', '0', '00', ...} can store different values instead of all zero.  (To be expanded to signed values as well).
-* run length specified (unsigned to be expanded to signed as well)
-* run length prefixed  (depricated as trivial)
+* runlengh specified(rls) separates the magnitude from the mantissa, thus {'', '0', '00', ...} can store different values instead of all zero.  (This has been expanded to signed values as well).
 * run lenght encoded, given a packet size encode (signed or unsigned) value expanding into other packets as necessary
-* count leading zeros  
+* count leading zeros(clz) of both sub-reg and arbitrary size
 
 ## Architecture
 
@@ -46,10 +45,10 @@ The `bref` class codecs to/from the bitstrm `reg`/`ureg` (with the extent [0,64)
 ```
 // example, storage and retrieval of 3 bit integer
 alloced_bref example_buf(c_at_least_3_and_internally_stored_on_full_64_bit_boundry);
-bref begin = example_buf;
-example_buf.iwrite(min_bits(-4), -4); // write 3 bits encoding -4 to example_buf while advancing
+bref begin = example_buf;             // min_bits returns the minimum 2's complement size necessary
+example_buf.iwrite(-4, min_bits(-4)); // write 3 bits encoding -4 to example_buf while advancing
 bref end = example_buf;               // now, encoded as a single signed integer, [begin, end) -> -4
-assert(begin.read_reg(end-begin) == -4);
+assert(begin.read<reg>(end-begin) == -4);
 ```
 ### Externalization of Magnitude
 

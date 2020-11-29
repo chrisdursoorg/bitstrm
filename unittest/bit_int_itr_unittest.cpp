@@ -20,8 +20,6 @@ using namespace boost::unit_test;
 using namespace bitstrm;
 using namespace std;
 
-
-
 BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
 {
   // initializing arrays
@@ -32,16 +30,16 @@ BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
   const char sentry = 42;                   // set "magic number" to see that neither front nor back is overwritten
   alloced_bref buf (numbers_bsize + 2*8);
   alloced_bref buf2(numbers_bsize + 2*8);
-  buf .iwrite_(sentry, 8);                   // mark the ends for later;
-  buf2.iwrite_(sentry, 8);
-  (buf  +  numbers_bsize).write_(sentry, 8);
-  (buf2 +  numbers_bsize).write_(sentry, 8);
+  buf .iwrite(sentry, 8);                   // mark the ends for later;
+  buf2.iwrite(sentry, 8);
+  (buf  +  numbers_bsize).write(sentry, 8);
+  (buf2 +  numbers_bsize).write(sentry, 8);
   
 
   bit_int_itr<13,reg> bc(buf2);
   bit_int_itr<13,reg> be(buf2+numbers_bsize);
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [bitSz,&buf](int v) { buf.iwrite_(v, bitSz); });
+  for_each(container.begin(), container.end(), [bitSz,&buf](int v) { buf.iwrite(v, bitSz); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
   buf .reset();
@@ -102,72 +100,60 @@ BOOST_AUTO_TEST_CASE(dynamic_interface_style_itr)
   
 }
 
-BOOST_AUTO_TEST_CASE( store_values_two_different_ways_boost_style )
-{
+template<class ITR, int ...SECOND_ARG>
+void check_itr(){
+
   // initializing arrays
-  int initValues[] = {1,2,3,4,4,5,6,7,7,7,7};
   typedef  std::vector<int> containerType;
-  containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
+  containerType container{1,2,3,4,4,5,6,7,7,7,7};
 
-  const unsigned bitSz = 4;
+  const unsigned intSz = 4;
+  const unsigned sentrySz = 17;
+  const int sentry = 4242;   // set "magic number to act as front/back sentry
+  const unsigned endOfDataOff = (container.size()*intSz + sentrySz);
+  BOOST_CHECK(min_bits(container.begin(), container.end()) <= intSz);
+  const unsigned bsize = container.size()*intSz + 2*sentrySz; 
+  alloced_bref buf(bsize);
+  alloced_bref buf2(bsize);
 
-  BOOST_CHECK(min_bits(container.begin(), container.end()) <= bitSz);
-  std::vector<char> buf(bref::_chars(bitSz * container.size()) + 2);
-  const char sentry = 42;       // set "magic number" to see that neither front() or back() is overwritten
-  buf.front() = sentry;
-  buf.back() = sentry;
-  std::vector<char> buf2(buf);
-  bref p((&buf.front()+1));            // bitstream starts after "magic number"
-  bref p2(&buf2.front()+1);
-  bref pe(p2 + container.size()*bitSz); // and continues until "magic number"
+  // write front and back sentry
+  buf .write(sentry, sentrySz);
+  buf2.write(sentry, sentrySz);     
+  (buf + endOfDataOff).iwrite(sentry, sentrySz);
+  (buf2+ endOfDataOff).iwrite(sentry, sentrySz);
+  
+  bref p(buf+sentrySz);                  // bitstreams start following sentry
+  bref p2(buf2+sentrySz);
+  bref p2e(p2 + container.size()*intSz); //  end at sentry
 
-  bit_int_itr<bitSz, ureg> bc(p2);
-  bit_int_itr<bitSz, ureg> be(pe);
+  ITR bc(p2, SECOND_ARG...);
+  ITR be(p2e, SECOND_ARG...);
+
   BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [&p](containerType::value_type value) { p.iwrite_(value, bitSz); });
+  for_each(container.begin(), container.end(), [&p](containerType::value_type value) { p.iwrite(value, intSz); });
   BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
   BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
-  BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry  && buf2.back() == sentry);
+  BOOST_CHECK(buf.read<reg>(sentrySz) == sentry && buf2.read<reg>(sentrySz) == sentry);
+  
+  BOOST_CHECK((buf + endOfDataOff).iread<reg>(sentrySz) == sentry);
+  BOOST_CHECK(p2e.read<reg>(sentrySz) == sentry);
   BOOST_TEST_MESSAGE("lots of different ways to be equal");
-  BOOST_CHECK_MESSAGE(equal(buf.begin(), buf.end(), buf2.begin()), "the memory should be equal");
-  BOOST_CHECK_MESSAGE(equal(p2, pe, bref(&buf2.front()+1)), "the bitstrms should be equal");
+  BOOST_CHECK_MESSAGE(equal(p2, p2e, ((bref&)(buf)+sentrySz)), "the bitstrms should be equal");
   BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "buf should return the original data");
 }
+
+BOOST_AUTO_TEST_CASE( store_values_two_different_ways_boost_style )
+{
+  const unsigned intSz = 4; 
+  check_itr<bit_int_itr<intSz, ureg> >();
+}
+
 
 BOOST_AUTO_TEST_CASE( store_values_two_different_with_dynamic_bsize_ways_boost_style )
 {
-  // initializing arrays
-  int initValues[] = {1,2,3,4,4,5,6,7,7,7,7};
-  typedef  std::vector<int> containerType;
-  containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
-
-  unsigned bitSz = 4;
-
-  BOOST_CHECK(min_bits(container.begin(), container.end()) <= bitSz);
-  std::vector<char> buf(bref::_chars(bitSz * container.size()) + 2);
-  const char sentry = 42;       // set "magic number" to see that neither front() or back() is overwritten
-  buf.front() = sentry;
-  buf.back() = sentry;
-  std::vector<char> buf2(buf);
-  bref p((&buf.front()+1));            // bitstream starts after "magic number"
-  bref p2(&buf2.front()+1);
-  bref pe(p2 + container.size()*bitSz); // and continues until "magic number"
-
-  dbit_int_itr<ureg> bc(p2, bitSz*1);
-  dbit_int_itr<ureg> be(pe, bitSz*1);
-  BOOST_TEST_MESSAGE("mechanism 1 to code container values into bitstrm backed by buf");
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite_(value, bitSz); });
-  BOOST_TEST_MESSAGE("mechanism 2 to code container values into bitstrm backed by buf2");
-  BOOST_CHECK(be == copy(container.begin(), container.end(), bc));
-  BOOST_CHECK(buf.front() == sentry && buf2.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry  && buf2.back() == sentry);
-  BOOST_TEST_MESSAGE("lots of different ways to be equal");
-  BOOST_CHECK_MESSAGE(equal(buf.begin(), buf.end(), buf2.begin()), "the memory should be equal");
-  BOOST_CHECK_MESSAGE(equal(p2, pe, bref(&buf2.front()+1)), "the bitstrms should be equal");
-  BOOST_CHECK_MESSAGE(equal(bc, be, container.begin()), "buf should return the original data");
+  const int bitSz = 4;
+  check_itr<dbit_int_itr<ureg>, bitSz >();
 }
-
 
 BOOST_AUTO_TEST_CASE( sort_values )
 {
@@ -178,23 +164,25 @@ BOOST_AUTO_TEST_CASE( sort_values )
   unsigned numbers_bsize = bitSz*container.size();
   alloced_bref buf(numbers_bsize + 2*8 + 64); // keep some extra space for 8 bit padding
   const char sentry = 42;                // "magic number" to see that front and back are preserved
-  buf.write_(sentry, 8);
-  (buf + 8 + numbers_bsize).write_(sentry, 8);
-  bref p(buf + 8); 
+  unsigned sentrySz = 8;
+  buf.write(sentry, sentrySz);
+  (buf + sentrySz + numbers_bsize).write(sentry, sentrySz);
+  
+  bref p(buf + sentrySz); 
   bref p0(p);                            // bitstream to start after "magic number"
   bref pe(p0 + numbers_bsize);           // and continues until back "magic number"
 
   bit_int_itr<13,reg> bc(p0);
   bit_int_itr<13,reg> be(pe);
   
-  for_each(container.begin(), container.end(), [bitSz,&p](int value) { p.iwrite_(value, bitSz); });
+  for_each(container.begin(), container.end(), [bitSz,&p](int value) { p.iwrite(value, bitSz); });
   stringstream str;
   str << "pre-sort: "; for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
   BOOST_TEST_MESSAGE(str.str());
   BOOST_CHECK(equal(container.begin(),container.end(), bc));
   sort(bc, be);
-  BOOST_CHECK(buf.read<reg>(8) == sentry);
-  BOOST_CHECK(pe .read<reg>(8) == sentry);
+  BOOST_CHECK(buf.read<reg>(sentrySz) == sentry);
+  BOOST_CHECK(pe .read<reg>(sentrySz) == sentry);
   str.str("");
   str << "pst-sort: "; for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
   BOOST_TEST_MESSAGE(str.str());
@@ -206,29 +194,32 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
 {
   // initializing arrays
   typedef  std::vector<int> containerType;
-  int initValues[] = {1,2,3,4,-4,5,6,7,192,323,3223};
-  containerType container(initValues, initValues + sizeof(initValues)/sizeof(int));
+  containerType container{1,2,3,4,-4,5,6,7,192,323,3223};
   unsigned bitSz = min_bits(container.begin(),container.end());
+  const unsigned sentry = 4242;
+  unsigned sentrySz = 17;
   BOOST_CHECK(bitSz == 13);
-  std::vector<char> buf(bref::_chars(bitSz*container.size()) +2);
-  const char sentry = 42;
-  buf.front() = sentry;
-  buf.back() = sentry;
-  bref p((&buf.front()+1));
-  bref p0(p);
-  bref pe(p + container.size()*bitSz);
+  unsigned paySz = bitSz*container.size();
+  alloced_bref buf(paySz+2*sentrySz);
 
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite_(value, bitSz); });
+  bref p(buf+sentrySz);
+  bref p0(p);
+  bref pe(p + paySz);
+  
+  buf.write(sentry, sentrySz);
+  pe .write(sentry, sentrySz);
+
+  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(value, bitSz); });
   BOOST_CHECK(p == pe);
-  BOOST_CHECK(buf.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry);
-  BOOST_CHECK((bitSz*container.size()) == (ureg)(p - p0));
+  BOOST_CHECK(buf.read<reg>(sentrySz) == sentry);
+  BOOST_CHECK(pe.read <reg>(sentrySz) == sentry);
+  BOOST_CHECK(paySz == (unsigned)(p - p0));
 
   // use std and bit_int_itr interators to check values
   containerType::const_iterator b = container.begin();
   containerType::const_iterator e = container.end();
   p = p0;
-  assert( bitSz == 13 && "We have a mix of lvalue and dynamic, fine as long as they remain the same"); 
+  BOOST_CHECK( bitSz == 13); //  "A mix of lvalue and dynamic, fine as long as they remain the same"); 
   bit_int_itr<13,reg> verify(p);
   for(; b != e; ++b, ++verify)
     BOOST_CHECK(*b == *verify);
@@ -249,13 +240,13 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
   BOOST_CHECK(*(be-2) == 323);
   BOOST_CHECK(*(be-1) == 3223);
   swap(*(be-1), *(be-2));
-  BOOST_CHECK(buf.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry);
+  BOOST_CHECK( buf.read<reg>(sentrySz) == sentry);
+  BOOST_CHECK( pe .read<reg>(sentrySz) == sentry);
   BOOST_CHECK(*(be-1) == 323);
   BOOST_CHECK(*(be-2) == 3223);
   swap(*(be-1), *(be-2)); // resore to original order/values
-  BOOST_CHECK(buf.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry);
+  BOOST_CHECK( buf.read<reg>(sentrySz) == sentry);
+  BOOST_CHECK( pe .read<reg>(sentrySz) == sentry);
   bc[5] = 5; 
 
   BOOST_CHECK(equal(container.begin(),container.end(), bc));
@@ -270,11 +261,11 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
   str.str("");
   str << "swap 0,4: ";  for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
   BOOST_TEST_MESSAGE(str.str());
-  BOOST_CHECK(buf.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry);
+  BOOST_CHECK( buf.read<reg>(sentrySz) == sentry);
+  BOOST_CHECK( pe .read<reg>(sentrySz) == sentry);
   sort(bc, be);
-  BOOST_CHECK(buf.front() == sentry);
-  BOOST_CHECK(buf.back() == sentry);
+  BOOST_CHECK( buf.read<reg>(sentrySz) == sentry);
+  BOOST_CHECK( pe .read<reg>(sentrySz) == sentry);
   str.str("");
   str << "pst-sort: ";  for_each(bc, be, [&str](reg v ){ str << v << ", ";});   str << endl;
   BOOST_TEST_MESSAGE(str.str());
@@ -390,8 +381,6 @@ BOOST_AUTO_TEST_CASE(sort_10_bit_signed)
   BOOST_CHECK(equal(testSet.begin(), testSet.end(), bc));
 }
 
-
-
 BOOST_AUTO_TEST_CASE(example_1){
 
   alloced_bref p0(13 * 1);
@@ -427,7 +416,7 @@ BOOST_AUTO_TEST_CASE(example_2){
   bref check(&buf2.front());  // dereferencing a bref acts as a bit vector
   for_each(beg, end, [&check](ureg val){
       BOOST_CHECK(*(check + val) == 0);
-      (check + val).write_(1, 1);
+      (check + val).write(1, 1);
     });
 
   BOOST_TEST_MESSAGE("by virtue of the count and completeness, we have found "
@@ -508,14 +497,12 @@ BOOST_AUTO_TEST_CASE(code_example_2){
 
 BOOST_AUTO_TEST_CASE(const_itr_2_itr_test){
 
-  
-  bit_int_itr<3, int> i3type0;
-  bit_int_itr<3, int> i3type1;
+  bref empty(nullptr);
+  bit_int_itr<3, int> i3type0(empty);
+  bit_int_itr<3, int> i3type1(empty);
 
-  bit_int_citr<3, int> i3ctype0;
-  bit_int_citr<3, int> i3ctype1;
-
-  BOOST_CHECK(true);
+  bit_int_citr<3, int> i3ctype0(empty);
+  bit_int_citr<3, int> i3ctype1(empty);
 
   //  i3type0 = i3ctype0;  a compiler error, cannot assign a const itr to a non const itr
   i3type0 = i3type1;    // same type

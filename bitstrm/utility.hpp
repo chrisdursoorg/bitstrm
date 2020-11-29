@@ -157,6 +157,8 @@ namespace  bitstrm {
 
   // signextend
   //
+  // C/C++ black magic bit field behavior extends sign @ BIT_COUNT to T
+  //
   // http://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
   // Signed extention from BIT_COUNT bit width to bit width of type T
   //
@@ -165,7 +167,8 @@ namespace  bitstrm {
   template <typename T, unsigned BIT_COUNT>
   inline constexpr T
   signextend(const T x) {
-    struct {T x:BIT_COUNT;} s;
+    // sba should_be_anonymous
+    struct sba{sba(){}; T x:BIT_COUNT;} s;
     return s.x = x;
   }
     

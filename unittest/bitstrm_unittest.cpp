@@ -18,7 +18,7 @@ BOOST_AUTO_TEST_CASE(arbitary_table_and_reset){
   const unsigned mask17bit = mask(17);
   BOOST_TEST_MESSAGE("fill up a 17 bit table");
   while(!(mask17bit & i))
-    strm.iwrite_(i++, 17);
+    strm.iwrite(i++, 17);
 
   // as a bitstrm (instead of simple bref) it can be reset
   strm.reset();
@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(late_allocate_and_swap){
   const unsigned mask17bit = mask(17);
   BOOST_TEST_MESSAGE("fill up a 17 bit table");
   while(!(mask17bit & i))
-    strm.iwrite_(i++, 17);
+    strm.iwrite(i++, 17);
 
   // a quick swap operation moves the underlying bits to strm2
   alloced_bref strm2;

@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(sos_message){
   // S-O-S message
   for(int i = 0; i < 8; ++i){
     unsigned msg = (i%2 == 0) ? ((((1<<1)|1)<<1)|1): 0; // Mores 'S' and 'O' respectively 
-    aa.iwrite_(msg, 3);
+    aa.iwrite(msg, 3);
   }
 
   stringstream str;

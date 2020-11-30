@@ -84,13 +84,13 @@ int main(int /*argc*/, const char** /*argv*/){
   for(auto a : data){
     if(should_resize(a, cur_bits, wasted_bits)){
       if(!first)
-	cur.iwrite_(1, 1);
-      cur.iwrite_(cur_bits, 6);
+	cur.iwrite(1, 1);
+      cur.iwrite(cur_bits, 6);
     }
     else {
-      cur.iwrite_(0, 1);
+      cur.iwrite(0, 1);
     }
-    cur.iwrite_(a, cur_bits);
+    cur.iwrite(a, cur_bits);
     first = false;
   }
   

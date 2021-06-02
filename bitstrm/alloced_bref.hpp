@@ -41,7 +41,6 @@ namespace bitstrm {
     //
     // gets the reserved bsize
     ureg get_reserve()const { return m_reserved; }
-
     
     // swap
     //
@@ -56,9 +55,8 @@ namespace bitstrm {
     //
     // allocate or reallocate bsize + reserved bits
     void allocate(ureg bsize) {
-      bsize += m_reserved;
-      m_buf.resize(uregs(bsize));
-      m_bytesize = bref::_chars(bsize);
+      m_bsize = bsize + m_reserved;
+      m_buf.resize(uregs(m_bsize));
       reset();
     } 
     
@@ -88,15 +86,16 @@ namespace bitstrm {
     const char* data()const{ return reinterpret_cast<const char*>(m_buf.data()); }
           char* data()     { return reinterpret_cast<      char*>(m_buf.data()); }
     
-    // bytesize
+    // bsize/bytesize
     //
-    // the underlying 'whole byte' size as indicated with bsize
-    ureg bytesize()const{ return m_bytesize; }
-
+    // the underlying whole true or 'whole byte' size
+    ureg bsize()const{ return m_bsize; }
+    ureg bytesize()const{ return (m_bsize + CHAR_BIT-1)/CHAR_BIT; }
+    
     
   private:
     std::vector<ureg> m_buf;
-    ureg              m_bytesize;
+    ureg              m_bsize;
     ureg              m_reserved;
   };
 

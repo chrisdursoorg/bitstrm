@@ -35,22 +35,22 @@ bref::operator> (const bref& rhs)const{
   return m_addr > rhs.m_addr || ((m_addr == rhs.m_addr) && m_off > rhs.m_off);}
 
 inline bref
-bref::operator+ (size_t rhs)const{
+bref::operator+ (reg rhs)const{
   bref r(*this); r.m_off += rhs; r.norm(); return r;
 }
 
 inline bref
-bref::operator-(size_t rhs)const{
+bref::operator-(reg rhs)const{
   bref r(*this);
   r.m_off -= rhs; r.norm();
   return r;
 }
 
 inline bref&
-bref::operator+=(size_t rhs){ m_off += rhs; norm(); return *this;}
+bref::operator+=(reg rhs){ m_off += rhs; norm(); return *this;}
 
 inline bref&
-bref::operator-=(size_t rhs){ m_off -= rhs; norm(); return *this;}
+bref::operator-=(reg rhs){ m_off -= rhs; norm(); return *this;}
 
 inline bref&
 bref::operator++()          { ++m_off; norm(); return *this; }

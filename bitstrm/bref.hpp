@@ -95,10 +95,10 @@ namespace bitstrm {
     bool  operator!=(bref const& rhs)const;
     bool  operator< (bref const& rhs)const;
     bool  operator> (bref const& rhs)const;
-    bref  operator+ (size_t rhs)     const;
-    bref  operator- (size_t rhs)     const;
-    bref& operator+=(size_t rhs);
-    bref& operator-=(size_t rhs);
+    bref  operator+ (reg rhs)     const;
+    bref  operator- (reg rhs)     const;
+    bref& operator+=(reg rhs);
+    bref& operator-=(reg rhs);
     bref& operator++();
     bref  operator++(int);
     bref& operator--();

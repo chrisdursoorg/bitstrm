@@ -150,21 +150,24 @@ bref::read(unsigned bsize) const{
 template<typename REG_UREG>
 inline REG_UREG
 bref::iread(unsigned bsize){
-  assert(bsize <= c_register_bits && "read only defined for regiter bits"); 
+  assert(bsize <= c_register_bits && "read only defined for register bits");
+
+  typedef typename std::conditional< std::is_signed<REG_UREG>::value, reg, ureg>::type REG_UREG_;
+
   size_t endpos(m_off + bsize);
 
   if(bsize == 0 )
       return 0; 
 
-  REG_UREG v(endian_adj(*m_addr) << m_off);
+  REG_UREG_ v(endian_adj(*m_addr) << m_off);
   if(endpos < c_register_bits ){
-    // capture begining but not through first register
+    // capture beginning but not through first register
     m_off = endpos;
     v >>= (c_register_bits - bsize);
     
   } else if(endpos > c_register_bits){
     
-    // capture finishing first register and begining on second
+    // capture finishing first register and beginning on second
 
     // first registers bits
     v >>= (c_register_bits-bsize);
@@ -174,7 +177,7 @@ bref::iread(unsigned bsize){
     m_off = endpos - c_register_bits;
     v = v | ((ureg)(endian_adj(*m_addr))) >> (c_register_bits - m_off);
   } else if( endpos == c_register_bits){
-    // capture begining and exactly through first register    
+    // capture beginning and exactly through first register
     v >>= m_off; 
     ++m_addr;
     m_off = 0;
@@ -263,7 +266,6 @@ bref::iread_rls<reg>(unsigned bsize){
   return relative + base;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // CODEC RLE (run length encoded)
 
@@ -273,7 +275,6 @@ bref::bsize_rle(SIGNED_UNSIGNED value, unsigned kbit){
   unsigned part = std::max<ureg>(1, ((bsize(value) + kbit - 1 - 1)/(kbit-1)));
   return part*kbit;
 }
-
 
 template<class REG_UREG>
 inline constexpr REG_UREG bref::max_rle(unsigned bsize, unsigned kbit){

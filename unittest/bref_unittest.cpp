@@ -20,7 +20,7 @@ using namespace std;
 
 // print_human_bits
 //
-// formats bits as human readable string
+// formats bits as human-readable string
 template<typename NUMERIC_TYPE>
 std::ostream& print_human_bits(std::ostream& out, NUMERIC_TYPE bits){
     
@@ -43,6 +43,22 @@ std::ostream& print_human_bits(std::ostream& out, NUMERIC_TYPE bits){
   }
     
   return out;
+}
+
+
+BOOST_AUTO_TEST_CASE(non_ureg_reg_types_with_read){
+    // stated in interface read was to be done on reg/ureg type but implemented generally resulting in errors
+    // with other types. Internally the type is now reg/ureg correcting the general case.
+
+
+  alloced_bref src(40);
+  src.write(42, 12);
+  BOOST_CHECK(src.read<ureg>(12) == 42);
+  alloced_bref dest(60);
+  bref end = bitstrm::copy(src, src + src.bsize(), dest);
+  BOOST_CHECK((end - dest) == 40);
+  BOOST_CHECK(dest.read<int>(12) == 42);
+  BOOST_CHECK(dest.read<float>(12) == 42.);
 }
 
 

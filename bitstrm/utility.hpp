@@ -146,7 +146,7 @@ namespace  bitstrm {
   }
   
   template<typename _ITR>
-  inline constexpr unsigned min_bits(_ITR b, _ITR e){ 
+  inline constexpr ureg min_bits(_ITR b, _ITR e){
     ureg v(0); 
     
     while( !(b == e)) 
@@ -183,6 +183,26 @@ namespace  bitstrm {
     return x;
   }
 
+  // clz
+  //
+  // Count leading zero's.  Zero returns the number of bits in the register.
+
+  template<typename BASE>
+  inline BASE op_clz(BASE);
+
+  template<>
+  inline uint64_t op_clz<uint64_t>(uint64_t i ){ return i ? __builtin_clzll(i): 64; }
+
+  template<>
+  inline uint32_t op_clz<uint32_t>(uint32_t i ){ return i ? __builtin_clz(i): 32; }
+
+  template<class BASE_> unsigned op_pop_count(BASE_);
+
+  template<> inline unsigned op_pop_count<unsigned>(unsigned x)                    { return __builtin_popcount(x);   }
+  template<> inline unsigned op_pop_count<unsigned long>(unsigned long x)          { return __builtin_popcountl(x);  }
+  template<> inline unsigned op_pop_count<unsigned long long>(unsigned long long x){ return __builtin_popcountll(x); }
+
+  
 }
 
 #endif // def'd BITLIB_UTILITYHPP_

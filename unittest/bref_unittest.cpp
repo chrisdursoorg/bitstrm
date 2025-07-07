@@ -1,9 +1,8 @@
-// ref_unittest.cpp
+// bref_unittest.cpp
 
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE "BitStreamBref"
 
-#define NO_ENDIAN_ADJUSTMENT
 #include <boost/test/unit_test.hpp>
 #include "bitstrm/bref.hpp"
 #include "bitstrm/alloced_bref.hpp"
@@ -13,6 +12,8 @@
 #include <iostream>
 #include <sstream>
 #include <set>
+#include <random>
+#include <cmath>
 
 using namespace boost::unit_test;
 using namespace bitstrm;
@@ -46,10 +47,9 @@ std::ostream& print_human_bits(std::ostream& out, NUMERIC_TYPE bits){
 }
 
 
-BOOST_AUTO_TEST_CASE(non_ureg_reg_types_with_read){
+BOOST_AUTO_TEST_CASE(g_non_ureg_reg_types_with_read){
     // stated in interface read was to be done on reg/ureg type but implemented generally resulting in errors
     // with other types. Internally the type is now reg/ureg correcting the general case.
-
 
   alloced_bref src(40);
   src.write(42, 12);
@@ -62,10 +62,10 @@ BOOST_AUTO_TEST_CASE(non_ureg_reg_types_with_read){
 }
 
 
-BOOST_AUTO_TEST_CASE(min_size_write_and_restore)
+BOOST_AUTO_TEST_CASE(g_min_size_write_and_restore)
 {
   BOOST_TEST_MESSAGE("test min_bits() with bitstrm::ref");
-  vector<ureg> buf(bref::uregs(8)*CHAR_BIT);
+  vector<reg> buf(bref::uregs(8)*CHAR_BIT);
   
   for(int i = 1024*1024; i > -1024*2024; --i){
 
@@ -76,45 +76,72 @@ BOOST_AUTO_TEST_CASE(min_size_write_and_restore)
     // this many bits correctly stores the value
     w.write(mask0(mbits) & i, mbits);
     reg restore = r.read<reg>(mbits);
-    BOOST_CHECK(i == restore);
-    // any less fails
+    if( i != restore)
+      BOOST_CHECK_MESSAGE(i == restore, "i: " << i << " restore: " << restore
+			  << " does not match");
+    // any less bits fails
     if(mbits){  // not zero!
       --mbits;
       w.write(mask0(mbits) & i, mbits);
-      reg restore = r.read<reg>(mbits); 
-      BOOST_CHECK(i != restore);
+      reg broken = r.read<reg>(mbits);
+      if(i == broken)
+	BOOST_CHECK_MESSAGE(i != broken, "i: " << i << " broken: " << broken
+			    << " should not match");
     }
   } 
 }
 
-#ifdef USE_ENDIAN
-// This test will only succeed with USE_ENDIAN on, otherwise the byte
-// order as accessed a ureg and a char will be messed up
-BOOST_AUTO_TEST_CASE(hello_world)
-{
-  char hw[] = "hello world";
-  const int  sz = strlen(hw);
+BOOST_AUTO_TEST_CASE(arbitary_table_and_reset){
+  alloced_bref strm(1024*17);
+  ureg i = 0;
+  const unsigned mask17bit = mask(17);
+  BOOST_TEST_MESSAGE("fill up a 17 bit table");
+  while(!(mask17bit & i))
+    strm.iwrite(i++, 17);
 
-  bref p(hw);
-  for(int i = 0; i < sz; ++i){
-    BOOST_CHECK(p.iread<ureg>(CHAR_BIT) == (ureg)hw[i]);
-  }
+  // as a bitstrm (instead of simple bref) it can be reset
+  strm.reset();
+
+  BOOST_TEST_MESSAGE("verify 17 bit table");
+  i = 0;
+  while(!(mask17bit & i))
+    BOOST_CHECK(strm.iread<ureg>(17) == i++);
+  
 }
-#endif
+
+BOOST_AUTO_TEST_CASE(late_allocate_and_swap){
+  alloced_bref strm;
+  strm.resize(1024*17);
+  ureg i = 0;
+  const unsigned mask17bit = mask(17);
+  BOOST_TEST_MESSAGE("fill up a 17 bit table");
+  while(!(mask17bit & i))
+    strm.iwrite(i++, 17);
+
+  // a quick swap operation moves the underlying bits to strm2
+  alloced_bref strm2;
+  strm2.swap(strm);
+  // keep track of curent reference position as it would have
+  // moved too
+  bref end = strm2;
+  strm2.reset();
+  // verify that extent given by end was correct
+  BOOST_CHECK(end - strm2 == 17*i);
+
+  BOOST_TEST_MESSAGE("verify 17 bit table");
+  i = 0;
+  while(!(mask17bit & i))
+    BOOST_CHECK(strm2.iread<ureg>(17) == i++);
+}
 
 // This test of a simple codec to save space, for msg lower case chars
 // and spaces, and we map space to 'z' + 1 in bottom 5 bits
-BOOST_AUTO_TEST_CASE(hello_world2)
+BOOST_AUTO_TEST_CASE(g_hello_world2)
 {
   const char   msg[] = "hello world";
   const int    sz = strlen(msg);
 
-#ifdef FAILS_VALGRIND_TEST
-  // Writing to sub ureg may result in memory boundry violations and race conditions
-  vector<char> buf( bref::_chars(5*sz)); // round buf to full byte
-#else
-  vector<ureg> buf( bref::uregs(5*sz));
-#endif
+  vector<reg> buf( bref::uregs(5*sz));
 
   bref write(&buf.front());
   bref read(write);
@@ -135,12 +162,12 @@ BOOST_AUTO_TEST_CASE(hello_world2)
       BOOST_CHECK(decoded  == v );}   );
 }
 
-BOOST_AUTO_TEST_CASE(bitstrm_ops){  
+BOOST_AUTO_TEST_CASE(g_bitstrm_ops){  
 
-  char buf[]="this data is irrelevant, its not going to be dereferenced or modified";
-  bref p(buf, 16);
-
+  reg  untouched;
+  bref p(&untouched);
   bref o = p++;
+  
   BOOST_CHECK( o < p );
   BOOST_CHECK( !(o > p));
   BOOST_CHECK(o != p);
@@ -162,10 +189,10 @@ int  three_bit_signed_numbers[] = {3, 2, 1, 0, -1, -2, -3, -4};
 int* three_bit_signed_numbers_e = three_bit_signed_numbers
   + sizeof(three_bit_signed_numbers)/sizeof(int);
 
-BOOST_AUTO_TEST_CASE(bitstrm_read_and_write){
-  vector<char> buf(256);
-  const char sentry = 42;
-  buf.back() = sentry;
+BOOST_AUTO_TEST_CASE(g_bitstrm_read_and_write){
+  vector<reg> buf(256);
+  const char  sentry = 42;
+  buf.back()  = sentry;
   
   bref p(&buf.front(),2);
   bref po(p);
@@ -176,9 +203,9 @@ BOOST_AUTO_TEST_CASE(bitstrm_read_and_write){
   for (int bits = 4; bits <= 64; ++bits, p = po){
       
     for_each(bv, ev, [bits,&p](int v) { p.iwrite(v, bits);} );
-      BOOST_CHECK(bref::_chars(p - po) <=  (buf.size() -1 ));
+      BOOST_CHECK(bref::uregs(p - po) <=  (buf.size() -1 ));
       for_each(bv, ev, [bits,&p](int v) { p.iwrite(v, bits);} );
-      BOOST_CHECK(bref::_chars(p - po) <=  (buf.size() -1 ));
+      BOOST_CHECK(bref::uregs(p - po) <=  (buf.size() -1 ));
       p = po;
       for_each(bv, ev, [bits,&p](int v) { 
           reg restore(p.iread<reg>(bits));  
@@ -190,10 +217,10 @@ BOOST_AUTO_TEST_CASE(bitstrm_read_and_write){
 }
 
 
-BOOST_AUTO_TEST_CASE(bitstrm_read_write_arbitrary_depths){
-  vector<char> buf(128);
-  const char sentry = 42;
-  buf.back() = sentry;
+BOOST_AUTO_TEST_CASE(g_bitstrm_read_write_arbitrary_depths){
+  vector<reg> buf(128);
+  const char   sentry = 42;
+  buf.back()   = sentry;
 
   bref p(&buf.front(),2);
   bref po(p);
@@ -201,12 +228,12 @@ BOOST_AUTO_TEST_CASE(bitstrm_read_write_arbitrary_depths){
   const int* bv = three_bit_signed_numbers;
   const int* ev = bv+sizeof(three_bit_signed_numbers)/sizeof(unsigned);    
    
-  for (int bits = 4; bits <= 64; ++bits, p = po){
+  for (size_t bits = 4; bits <= 64; ++bits, p = po){
 
     // write
     for_each(bv, ev, [bits,&p](int v) { p.iwrite(v, bits);} );
-    BOOST_CHECK(bits*(ev-bv) == (p-po));
-    BOOST_CHECK(bref::_chars(p - po) <=  buf.size());
+    BOOST_CHECK(size_t(bits*(ev-bv)) == (p-po));
+    BOOST_CHECK(bref::uregs(p - po) <=  buf.size());
   
     // restore
     p = po;
@@ -218,7 +245,7 @@ BOOST_AUTO_TEST_CASE(bitstrm_read_write_arbitrary_depths){
   BOOST_CHECK(buf.back() == sentry);
 }
 
-BOOST_AUTO_TEST_CASE(clz_){
+BOOST_AUTO_TEST_CASE(g_clz_){
   ureg v = 0; v = ~v; // 0b111..1
   BOOST_CHECK( __builtin_clzll(v)  == 0);
   BOOST_CHECK( op_clz<uint64_t>(v) == 0);
@@ -229,12 +256,11 @@ BOOST_AUTO_TEST_CASE(clz_){
   BOOST_CHECK( __builtin_clzll(v)  == 1);
   BOOST_CHECK( op_clz<uint64_t>(v) == 1);
   v=0;
-  // BOOST_CHECK( __builtin_clzll(v) == 64);  Undefined, and is NOT 64
+  // BOOST_CHECK( __builtin_clzll(v) == 64);  Undefined!
   BOOST_CHECK( op_clz<uint64_t>(v) == 64);
 }
 
-
-BOOST_AUTO_TEST_CASE(clz_bitstrm){
+BOOST_AUTO_TEST_CASE(g_clz_bitstrm){
   ureg max_count = 11;
   ureg bits_for_test   = (max_count + 1)*(max_count + 2)/2;
   ureg magic           = 42;
@@ -248,28 +274,28 @@ BOOST_AUTO_TEST_CASE(clz_bitstrm){
 
   for( int v = max_count; v != -1; --v){
     int run = po.iclz();
+    ++po;
     BOOST_CHECK_MESSAGE( v == run, "v: " << v << " run: " << run);
-  }
-  
+  }  
   BOOST_CHECK(po.iread<ureg>(bits_for_sentry) == magic);
 }
 
-
-BOOST_AUTO_TEST_CASE(clz_bitstrm_bigger){
+BOOST_AUTO_TEST_CASE(g_clz_bitstrm_bigger){
   alloced_bref buf(4*c_register_bits);
   buf.zero();
   
   bref po(buf);
 
   // write two singular bit 0 @ at 1st and bit 1 at 3rd register 
-  (buf + c_register_bits)  .iwrite(1,1);
-  (buf + 3*c_register_bits + 1).iwrite(1,1);
+  (buf + c_register_bits).iwrite(1,1);
+  (buf + 3*c_register_bits + 1 ).iwrite(1,1);
 
   BOOST_CHECK(po.iclz() == c_register_bits);
+  ++po;
   BOOST_CHECK(po.iclz() == 2*c_register_bits);
 }
 
-BOOST_AUTO_TEST_CASE(longer_lz_strings){
+BOOST_AUTO_TEST_CASE(g_longer_lz_strings){
   const unsigned test_size = 5;
   alloced_bref buf(test_size*c_register_bits);
   buf.zero();
@@ -297,8 +323,8 @@ BOOST_AUTO_TEST_CASE(longer_lz_strings){
 }
 
 BOOST_AUTO_TEST_CASE(alloced_bref_copy){
-  vector<char> buf(505);
-  const char sentry = 42;
+  vector<reg> buf(505);
+  const char  sentry = 42;
   buf.back() = sentry;
   
   bref p(&buf.front());
@@ -334,48 +360,8 @@ BOOST_AUTO_TEST_CASE(alloced_bref_copy){
   BOOST_CHECK(buf.back() == 42);  
 }
 
-BOOST_AUTO_TEST_CASE(alloced_bref_equal){
-  vector<char> buf(505);
-  vector<char> buf2(505);
-  vector<char> buf3(505);
 
-  bref p(&buf.front());
-  bref po(p);
-  bref q(&buf2.front());
-  bref qo(q);
-  bref r(&buf3.front());
-  bref ro(r);
-
-  // write a 10110011100011110000... pattern 4032 bits until when you
-  // fall on an even 64 boundry
-  int i = 0;
-  do {
-    i %= 64;
-    ++i;
-    p.iwrite(mask0(i), i);  // 1's
-    q.iwrite(mask0(i), i);  // 1's
-    r.iwrite(0, i);         // 0's
-    r.iwrite(mask0(i), i);  // 1's
-    p.iwrite(0, i);         // 0's
-    q.iwrite(0, i);         // 0's
-  } while((p - po) % 64 != 0 );
-  
-  BOOST_CHECK(equal(po, po, qo));            // zero length
-  BOOST_CHECK(equal(po, p, qo));             // full length
-  BOOST_CHECK(equal(po + 42, p, qo + 42));   // arbitrary subset
-  BOOST_CHECK(equal(po, p - 42, qo));        // arbitrary subset
-  
-  // for an irregular non zero incrementing sequence of i check
-  // equivalence and non equivalence
-  for(int i = 1; i < p - po; ){
-    BOOST_CHECK( equal(po + i, p, qo + i));
-    BOOST_CHECK(!equal(po + i, p, ro + i));
-    int varies =   i*i % 11;
-    i += varies ? varies : 1;
-  }
-}
-
-BOOST_AUTO_TEST_CASE(example_0){
+BOOST_AUTO_TEST_CASE(g_example_0){
   alloced_bref alloc0(3);            // what can you do with 3 bits?
   bref p0 = alloc0;                  // make some 'pointers'
   bref p1 = p0;
@@ -407,7 +393,7 @@ BOOST_AUTO_TEST_CASE(example_0){
   // or {0}{1, 2}{3, 4, 5, 6}{7, 8, 9, 10, 11, 12, 13, 14}, where we have the ranges of 0, 1, 2, and 3 bits
 }
 
-BOOST_AUTO_TEST_CASE(documentation_example){
+BOOST_AUTO_TEST_CASE(g_documentation_example){
   const unsigned c_at_least_3_and_internally_stored_to_full_64_bit_boundry = 3;
   alloced_bref example_buf(c_at_least_3_and_internally_stored_to_full_64_bit_boundry);
   bref begin = example_buf;
@@ -416,7 +402,7 @@ BOOST_AUTO_TEST_CASE(documentation_example){
   BOOST_CHECK(begin.read<reg>(end-begin) == -4);
 }
 
-BOOST_AUTO_TEST_CASE(popcount_simple){
+BOOST_AUTO_TEST_CASE(g_popcount_simple){
   constexpr unsigned example_size = 1024;
   alloced_bref example(example_size);
   bref end = example + example_size;
@@ -427,7 +413,7 @@ BOOST_AUTO_TEST_CASE(popcount_simple){
   BOOST_CHECK(popcount(example, end) == 2);
 }
 
-BOOST_AUTO_TEST_CASE(popcount_test){
+BOOST_AUTO_TEST_CASE(g_popcount_test){
 
   // maximally fill  elements one at a time and see that indeed it adds to the popcount
   constexpr unsigned example_size = 2057;
@@ -445,7 +431,7 @@ BOOST_AUTO_TEST_CASE(popcount_test){
   assert(pile.size() == example_size && "set should be completely covered");
 }
 
-BOOST_AUTO_TEST_CASE(rle_ureg){
+BOOST_AUTO_TEST_CASE(g_rle_ureg){
  
   // unsigned 
   constexpr ureg max_packet = 14;
@@ -461,7 +447,9 @@ BOOST_AUTO_TEST_CASE(rle_ureg){
       ureg bsize = bref::bsize_rle(n, packet_size);
       bref cc = c;
       c.iwrite_rle(n, packet_size);
-      BOOST_CHECK(ureg(c - cc) == bsize);
+      if(ureg(c - cc) != bsize)
+	BOOST_CHECK_MESSAGE(false, "mismatch: write_rle: " << (c - cc)
+			    << " bsize_rle: " << bsize);
     }
 
     BOOST_CHECK( c < e );
@@ -469,9 +457,14 @@ BOOST_AUTO_TEST_CASE(rle_ureg){
 
     for(ureg n = 0; n < test_size; ++n){
       bref cc = c;
-      ureg number = c.iread_rle<ureg>(packet_size);
-      BOOST_CHECK(number == n);
-      BOOST_CHECK(bref::bsize_rle<ureg>(n, packet_size) == ureg(c - cc));
+      ureg restore = c.iread_rle<ureg>(packet_size);
+      if(restore != n)
+	BOOST_CHECK_MESSAGE(false, "restored value: " << restore << " does not match: "
+			    << n);
+      auto predicted = bref::bsize_rle<ureg>(n, packet_size);
+      if(predicted != ureg(c - cc))
+	BOOST_CHECK_MESSAGE(false, "predicted size: " << predicted
+			    << " does not match actual size: " << ureg(c - cc) );
     }
     BOOST_TEST_MESSAGE("Using packet size " << packet_size << " series up to " << test_size
 		       << " required " << (c - buf) << " bits.");
@@ -479,9 +472,7 @@ BOOST_AUTO_TEST_CASE(rle_ureg){
   }
 }
 
-
-
-BOOST_AUTO_TEST_CASE(bsize_rls_test){
+BOOST_AUTO_TEST_CASE(g_bsize_rls_test){
 
   BOOST_CHECK(bref::bsize_rls<ureg>(0) == 0);   // b''
   BOOST_CHECK(bref::bsize_rls<ureg>(1) == 1);   // b'0'
@@ -542,7 +533,7 @@ check_rle(REG_UREG value, unsigned bsize, unsigned packet_bsize,int leading, int
   if(trailing == 0)
     BOOST_CHECK( (restore & mask0(bsize-1)) == 0);
   else if (trailing > 0)
-    BOOST_CHECK( (restore & mask0(bsize-1)) == mask0(bsize-1));
+    BOOST_CHECK( reg(restore & mask0(bsize-1)) == mask0(bsize-1));
 }
 
 template<class REG_UREG >
@@ -559,7 +550,7 @@ check_rls(REG_UREG value){
   BOOST_CHECK(restored == value);
 }
 
-BOOST_AUTO_TEST_CASE(min_max_value_each_bsize){
+BOOST_AUTO_TEST_CASE(g_min_max_value_each_bsize){
 
   BOOST_CHECK(bref::bsize<ureg>(0)        == 0);
   BOOST_CHECK(bref::bsize<reg >(0)        == 0);
@@ -607,8 +598,8 @@ BOOST_AUTO_TEST_CASE(min_max_value_each_bsize){
     BOOST_CHECK(c.read<reg>(bsize) == bref::max<reg>(bsize));
     v = c.iread<reg>(bsize);
     BOOST_CHECK(e == c);
-    BOOST_CHECK(((reg(1) << (bsize -1)) & v) == 0);          // signed bit must be low
-    BOOST_CHECK(bsize == 1 or (ureg(v) == mask0(bsize-1)));  // following all high
+    BOOST_CHECK(((reg(1) << (bsize -1)) & v) == 0);      // signed bit must be low
+    BOOST_CHECK(bsize == 1 or (v == mask0(bsize-1)));    // following all high
     // rle - try all rle packet sizes for bsize
     BOOST_CHECK(bref::min<ureg>(bsize) == 0);
     for(unsigned packet = 2; false and packet < (c_register_bits - 2); ++packet){
@@ -626,3 +617,97 @@ BOOST_AUTO_TEST_CASE(min_max_value_each_bsize){
     check_rls<reg >(bref::max_rls<reg >(bsize));
   }
 }
+
+BOOST_AUTO_TEST_CASE(check_normalization){
+  // by bouncing ramdomly then returning verify that the normalization function is working
+
+  reg untouched;
+  bref a(&untouched, 2);
+  auto b = a;
+
+  std::random_device rd; // obtain a random number from hardware
+  std::mt19937 gen(rd()); // seed the generator
+  std::normal_distribution d{0.0, 5e6};  // a wide distribution but also get some small numbers
+
+  auto random_int = [&d, &gen]{ return std::lround(d(gen)); };
+
+  auto m  = numeric_limits<reg>::max();
+  auto M  = numeric_limits<reg>::min();
+  auto am = m;
+
+  auto record_extremum = [&m, &M, &am](reg x){
+    m  = min(m, x);
+    M  = max(M, x);
+    if(std::labs(am) > std::labs(x))
+      am = x;
+    return;
+  };
+  
+  BOOST_CHECK_MESSAGE(true, "quiet BOOST_CHECK message");
+  for(ureg i = 0; i < 1000000; ++i){
+    reg x = random_int();
+    record_extremum(x);
+    a += x;
+    a -= x;
+
+    if(a != b)
+      BOOST_CHECK_MESSAGE(a != b,  "these two brefs are supposed to be equivalent a: "
+			  << a << ", b: " << b << "\n");
+    ;    
+  }
+
+  BOOST_TEST_MESSAGE("\nSampled Values: \nmin: " << m << " max: " << M << " closest to zero: " << am << "\n");
+  
+}
+
+
+BOOST_AUTO_TEST_CASE(bref_equal){
+
+  int const bufsz = 4032;
+  alloced_bref p(bufsz);
+  bref po(p);
+  alloced_bref q(bufsz);
+  bref qo(q);
+  alloced_bref r(bufsz);
+  bref ro(r);
+
+  // write p,q as 10110011100011110000... pattern 4032 bits until falling on an even 64 boundry, r is a binary compliment of p
+  int i = 0;
+  do {
+    i %= 64;
+    ++i;
+    
+    p.iwrite(mask0(i), i);  // 1's
+    q.iwrite(mask0(i), i);  // 1's
+    p.iwrite(0, i);         // 0's
+    q.iwrite(0, i);         // 0's
+
+    r.iwrite(0, i);         // 0's
+    r.iwrite(mask0(i), i);  // 1's
+
+  } while((p - po) % 64 != 0 );
+
+  BOOST_CHECK(r - ro == p - po);
+  BOOST_CHECK(equal(po, po, qo));            // zero length
+  BOOST_CHECK(equal(po, p, qo));             // full length
+  BOOST_CHECK(equal(po + 42, p, qo + 42));   // arbitrary subset
+  BOOST_CHECK(equal(po, p - 42, qo));        // arbitrary subset
+  
+  // for an irregular non zero incrementing sequence of i check
+  // equivalence and non equivalence
+  for(size_t i = 1; i < p - po; ){
+    BOOST_CHECK( equal(po + i, p, qo + i));
+    BOOST_CHECK(!equal(po + i, p, ro + i));
+    int varies =   int(i*i) % 11;
+    i += varies ? varies : 1;
+  }
+  for(int i = 1; i < 32; ++i){
+
+    alloced_bref cpy(bufsz - 2*i);
+    bref b = po + i;
+    bref e = p  - i;
+    bitstrm::copy(b, e, cpy);
+    BOOST_CHECK(bitstrm::equal(b, e, cpy));
+  }  
+}
+

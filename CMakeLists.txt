@@ -4,7 +4,7 @@ enable_testing()
 
 project(bitstrm)
 
-add_definitions("-std=c++17 -Wall -pedantic -Wall -Wextra")
+add_definitions("-std=c++23 -Wall -pedantic -Wall -Wextra")
 
 IF(NOT DEFINED ${CMAKE_BUILD_TYPE})
     message ("defaulting to Release mode, do you want -DCMAKE_BUILD_TYPE='Debug' ?")

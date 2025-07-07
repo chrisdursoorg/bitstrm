@@ -21,12 +21,13 @@ BOOST_AUTO_TEST_CASE(null_bref)
   stringstream str;
   n.print(str);
 
-  BOOST_CHECK(str.str() == "0xNullptr");
+  BOOST_CHECK(str.str() == "0xNullptr +0");
+  BOOST_TEST_MESSAGE(str.str());
 }
 
 BOOST_AUTO_TEST_CASE(non_null_bref){
 
-  ureg buf;
+  reg buf;
   bref n(&buf);
 
   stringstream str;
@@ -38,7 +39,6 @@ BOOST_AUTO_TEST_CASE(non_null_bref){
   ans  << std::hex << &buf << " +0";
   
   BOOST_CHECK(str.str() == ans.str());
-
 }
 
 BOOST_AUTO_TEST_CASE(sos_message){
@@ -47,11 +47,11 @@ BOOST_AUTO_TEST_CASE(sos_message){
 
   // S-O-S message
   for(int i = 0; i < 8; ++i){
-    unsigned msg = (i%2 == 0) ? ((((1<<1)|1)<<1)|1): 0; // Mores 'S' and 'O' respectively 
+    unsigned msg = (i%2 == 0) ? ((((1<<1)|1)<<1)|1): 0; // Morse 'S' and 'O' respectively 
     aa.iwrite(msg, 3);
   }
 
   stringstream str;
   print(str, a, aa);
-  BOOST_CHECK(str.str() == "b111000111000111000111000");
+  BOOST_CHECK(str.str() == "111000111000111000111000");
 }

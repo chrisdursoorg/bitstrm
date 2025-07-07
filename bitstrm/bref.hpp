@@ -4,22 +4,28 @@
 #define BITSTRM_BREF_HPP
 
 #include <cassert>
-#include "bitstrm/utility.hpp"
+#include <bitstrm/reg.hpp>
+#include <bitstrm/utility.hpp>
+#include <iosfwd>
+
+#ifdef USE_ENDIAN
+#error "bswap adjustment supporting endian addressing has been removed"
+#endif
 
 
 // bref(erence)
 //
 // Refers to a location in an allocated bitstrm assuming external
-// type/bsize management.
+// type/bsize management abstracting but working on reg boundary.
 //
-// The 'pointer' or 'iterator' like behavior assumes a single bit
-// type, hence r1 - r0 is the bitwise distance or bsize, *r0 is the
-// bit value at r0, r0++ avavances the reference by 1 bit, etc.
+// With 'pointer' or 'iterator' like behavior (defaults to a single bit),
+// r1 - r0 is the bitwise distance or bsize, *r0 is the
+// bit value at r0, r0++ advances the reference by 1 bit, etc.
 //
-// Two bref r0, r1 can consitute a range [r0, r1) if constructed from
-// the same base address over contiguous reg castable memory.
+// Two bref r0, r1 can constitute a range [r0, r1) if constructed from
+// the same base address over contiguous reg cast-able memory.
 //
-// Milti bit access allows for the mapping of [0,
+// Milti-bit access allows for the mapping of [0,
 // c_register_bit_addr_sz) bits to/from signed (reg) or unsigned (ureg)
 // values using various coding and meta information
 //
@@ -59,15 +65,9 @@
 //         beg = buf;
 //         
 //  rle    packet run length encode, (next prefix) kbit packet size, kbit > 1
+//         May be either signed or unsigned value.    
 //         (e.g. k:5 {0|0000, 1|1100^0|0001} -> {0, 193})
 //
-//  rles   packetsigned integer run length encode, (next prefix) kbit packet size
-//         (e.g. k:5 {0|0000, 1|1100^0|0001} -> {0, -63})
-//
-
-// run length specified maps integers with specified or listed
-// as in [prefix]{(2^(*prefix)-1)} bits, values of 
-// [0, 2^(total_bits-prefix) -2]
 
 namespace bitstrm {
 
@@ -79,14 +79,13 @@ namespace bitstrm {
     
   public:
     bref(){};
-    bref(const bref& rhs): m_addr(rhs.m_addr), m_off(rhs.m_off){}
-    bref(void* addr): m_addr(reinterpret_cast<reg*>(addr)), m_off(0){}
-    bref(void* addr, int off): m_addr(reinterpret_cast<reg*>(addr)),
-                               m_off(off){ norm();}
+    bref(const bref& rhs)   : m_addr(rhs.m_addr), m_off(rhs.m_off){}
+    bref(reg* buf)          : m_addr(buf), m_off(0){}
+    bref(reg* buf, int off) : m_addr(buf), m_off(off){
+      norm();}
     constexpr bref(bref&& rhs) = default;
     
     // STANDARD OPERATORS
-    ureg  operator*()const;
     bref& operator= (const bref& rhs) = default;
     bref& operator= (bref&& rhs) = default;
     bool  operator==(bref const& rhs)const;
@@ -128,11 +127,13 @@ namespace bitstrm {
     REG_UREG iread_rle (unsigned kbit);
 
     // [i]clz
-    // scan from current bref and return number of leading zeros prior to binary one
-    // This function is defined as long as memory valid until one encountered 
-    // iclz variant increments bref past the first one
-    unsigned clz()const {bref t(*this); return t.iclz(); }
-    unsigned iclz();
+    //
+    // Termination must occur in valid memory.
+    //
+    // iclz advances to the first 1, return the number of leading zeros
+    // advanced past
+    ureg clz()const {bref t(*this); return t.iclz(); }
+    ureg iclz();
 
     // [i]write[_*]
     // 
@@ -143,7 +144,6 @@ namespace bitstrm {
     // bsize for write and iwrite must be at least bref::bsize(value) in size. for
     // rls_write must be exactly bref::bsize_rls<REG_UREG>(value)
     //
-
     void write      (ureg signed_or_unsigned_value, unsigned bsize) const;
     void iwrite     (ureg signed_or_unsigned_value, unsigned bsize);
     template<class REG_UREG>
@@ -177,17 +177,6 @@ namespace bitstrm {
     template<class REG_UREG>
     static constexpr REG_UREG min_rle(unsigned bsize, unsigned kbit);
 
-    // _chars
-    // 
-    // return minimum of bytes(s) necessary to store bsize. NOTE:
-    // Relying on minimal bytes may result in memory tools complaining
-    // of reading unset bytes, possibly reading beyond owned memory,
-    // and race conditions with writing to near objects.  The
-    // underscore is to emphasize that the practice is a bit dodgy and
-    // best practices are to work on reg boundries e.g. allocation
-    // of uregs().
-    static ureg _chars(ureg bsize){ return (bsize+__CHAR_BIT__-1)/__CHAR_BIT__;}
-    
     // uregs
     // 
     // return number of uregs to store bsize, worth of data 
@@ -197,7 +186,7 @@ namespace bitstrm {
     
     // print 
     //
-    // prints not the value but address of this bref
+    // print address of this bref in format 0xXX..X +[off] or '0xNullptr +0'
     //
     // #include "bistrm/print.hpp"
     std::ostream& print(std::ostream& dest)const;
@@ -206,7 +195,7 @@ namespace bitstrm {
     // subtract
     //
     // in debugger context it my be easier to call functions than operators
-    static reg subtract(const bref& lhs, const bref& rhs){
+    static std::size_t subtract(const bref& lhs, const bref& rhs){
       return c_register_bits*(lhs.m_addr - rhs.m_addr) + lhs.m_off - rhs.m_off;
     }
     
@@ -219,68 +208,48 @@ namespace bitstrm {
   private:
     
     // norm
-    // m_addr, m_off represented exactly one way
+    // m_addr, m_off such that m_off is bounded to [0, c_register_bits)
     // 
     void norm(){
-      reg d = (m_off & ~c_register_bit_addr_msk);
-      if(!d)
-	return;  // ok, nominal case
-    
-      norm_overflow_underflow(m_off);
-    }
+      // an offset > c_register_bit_addr_msk or < 0 must be normalized
+      if(!(m_off & ~c_register_bit_addr_msk))
+	return;  // ok, passes as normal
+      if(m_off > 0){
+	// too large
+	m_addr += (m_off / (reg)(c_register_bits));
+	m_off   = (m_off % (reg)(c_register_bits));
+      } else {
+	// too small (any negative value)
+	reg w = (m_off + 1) / c_register_bits;
+	reg r = (m_off + 1) % c_register_bits;
 
-    void norm_overflow_underflow(reg d);
+	m_off   = (c_register_bits - 1 + r);
+	m_addr -= (1 - w);
+      }    
+    }
 
     friend ureg popcount(bref, bref);
     friend bref clz   (bref, bref);
+    friend bref copy(bref begin, bref end, bref destination);
+    friend std::pair<bref, bref> mismatch(bref begin, bref end, bref target);
 
   }; // struct bref
+
   
-  inline reg operator-(const bref& lhs, const bref& rhs){
+  inline std::size_t operator-(const bref& lhs, const bref& rhs){
     return bref::subtract(lhs, rhs);
   }
 
-  // in order to generally lighten compile, there is a dependency of #include "bistrm/print.hpp"
+  // in order to generally lighten compile, there is a dependency of
+  // #include "bistrm/print.hpp"
   inline std::ostream& operator<< (std::ostream& lhs, const bref& rhs){
     rhs.print(lhs);
     return lhs;
   }
 
-  // algorithms ///////////////////////////////////////////////////////////////
-  //
-  // also see bitstm utility.hpp for signed/unsigned integer opterations 
+// also see bitstrm utility.hpp for signed/unsigned integer operations
 
-  // copy
-  // 
-  // copys the bits from [begin, end) into the range begining with result
-  // returns an bitstream of the end of the destination range
-  bref copy(bref begin, bref end, bref result);
-
-  // equal
-  // 
-  // for [begin, end) return true if equivalent to [second, second + end - begin)  
-  bool equal(bref begin, bref end, bref second);
-
-  // clz
-  //
-  // leading zero run, for [beg, end), not bounded at c_register_bits,
-  // return a bref at the first hi bit or else such that return - beg is clz
-  bref clz(bref beg, bref end);
-  
-  // popcount
-  //
-  // population count of ones in [beg, end), O(ones) complexity
-  ureg popcount(bref beg, bref end);
-
-  // print
-  //
-  // print value of [beg, end) in format bXYZ...
-  // #include "bistrm/print.hpp"
-  std::ostream&
-  print(std::ostream& out, bref beg, bref end);
-  
-# include "bitstrm/bref_impl.hpp"
-  
+#include <bitstrm/bref_impl.hpp>
 
 } // namespace bitstrm
 

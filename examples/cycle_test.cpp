@@ -6,9 +6,10 @@
 #include "bitstrm/reg.hpp"
 #include "bitstrm/alloced_bref.hpp"
 #include "bitstrm/utility.hpp"
-#include "bitstrm/bit_int_itr.hpp"
+#include "bitstrm/bint_itr.hpp"
 #include "bitstrm/TimeFixture.hpp"
-#include <boost/lexical_cast.hpp>
+#include "bitstrm/print.hpp"
+#include <sstream>
 #include <iostream>
 #include <string>
 #include <utility>
@@ -20,31 +21,6 @@ using namespace std;
 
 unsigned bitstrm::TimeFixture::s_timer_number = 0;
 mt19937                       generator(3);
-
- std::ostream&
- print_human_bits(std::ostream& out, unsigned long long bits){
-    
-    unsigned long long  bytes = bits/8;
-
-    if(bytes < 2){
-      out << bits << " bits";
-    } else if(bytes < 1024){
-      unsigned long long whole_bytes = bits/8;
-      out << whole_bytes << " bytes";
-      unsigned long long remain = (bits - (whole_bytes*8));
-      if(remain )
-        out << " " << remain << " bits";
-    } else if(bytes < 1024*1024){
-      out << double(bits) / (8*1024) << " kbytes";
-    } else if(bytes < 1024*1024*1024){
-      out << double(bits) / (8*1024*1024) << " mbytes";
-    } else {
-      out << double(bits)/(double(8)*1024*1024*1024) << " gbytes";
-    }
-    
-    return out;
-  }
-
 
 const unsigned long long c_large_size = 1024*1024*1024*16ULL;
 
@@ -89,14 +65,15 @@ unsigned long long stateless_graph_following_algorithm(ITR beg, ITR cur){
 // to the previously discovered cycle in traversed
 
 template<class ITR>
-unsigned long long graph_following_algorithm(ITR beg, unsigned long long beg_off, vector<bool>& traversed){
+unsigned long long
+graph_following_algorithm(ITR beg, unsigned long long beg_off, vector<bool>& traversed){
   //
   if(traversed[beg_off])
     return 0;
 
   static alloced_bref buf(traversed.size());
   buf.zero();
-  bit_int_itr<1, ureg> new_cycle(buf);
+  mutable_bint_itr<ureg> new_cycle(buf, 1);
   
   auto off = beg_off;  
   auto cur = beg + off;
@@ -138,7 +115,7 @@ unsigned long long graph_following_algorithm_print(ITR beg, unsigned long long b
 
   static alloced_bref buf(traversed.size());
   buf.zero();
-  bit_int_itr<1, ureg> new_cycle(buf);
+  mutable_bint_itr<ureg> new_cycle(buf, 1);
   
   auto off = beg_off;  
   auto cur = beg + off;
@@ -255,8 +232,9 @@ generate_measure_and_check(std::vector<LINK>& graph, unsigned bsize){
   // begin with a graph lableled [0, n-1]
   // or each ith node just points to itself
   {
-    string message(string("assign ") + boost::lexical_cast<string>(graph.size()) + " pointers");
-    TimeFixture f(message.c_str());
+    stringstream str;
+    str << "assign" << graph.size() << " verticies single edges to themselves";
+    TimeFixture f(str.str());
     unsigned long long i = 0;
     for( auto& v : graph)
       v = i++;
@@ -271,8 +249,7 @@ generate_measure_and_check(std::vector<LINK>& graph, unsigned bsize){
   //{n0->ni, ..., ni->nj, ..., nj->nk, ...}
   // shuffle it, or swap each connection with another
   {
-    string message("shuffle pointers forming nontrivial graph");
-    TimeFixture f(message.c_str());
+    TimeFixture f("shuffle edges randomly among verticies");
     for(int i = 0 ; i < 8; ++i) {
       shuffle(graph.begin(), graph.end(), generator);
     }
@@ -283,8 +260,7 @@ generate_measure_and_check(std::vector<LINK>& graph, unsigned bsize){
   // with a random assignment
   {
     unsigned long long replacements = min(1ULL, (unsigned long long)(0.5*graph.size()));
-    string message("orphan nodes forming nontrivial graph");
-    TimeFixture f(message.c_str());
+    TimeFixture f("orphan nodes forming nontrivial graph");
     uniform_int_distribution<int> distr(0, graph.size() -1);
     for(; replacements; --replacements)
       graph[distr(generator)] = distr(generator);
@@ -293,26 +269,23 @@ generate_measure_and_check(std::vector<LINK>& graph, unsigned bsize){
   // copy the vector into a suitable bitstrm
   alloced_bref buf(bsize * graph.size());
   {
-    string message("copy to bitstrm");
-    TimeFixture f(message.c_str());
-    dbit_int_itr<ureg> cur(buf, bsize);
+    TimeFixture f("copy to bitstrm");
+    mutable_bint_itr<ureg> cur(buf, bsize);
     copy(graph.begin(), graph.end(), cur);
   }
   
   pair<cycle, cycle> min_max;
   {
-    string message("determine cycles on std vector");
-    TimeFixture f(message.c_str());
+    TimeFixture f("determine cycles on std vector");
     // cout << "vector:\n" << endl;
     min_max = graph_min_max_cycle(graph.begin(), graph.end());
   }
 
   pair<cycle, cycle> min_max_alt;
   {
-    string message("determine cycles on bitstrm vector");
-    TimeFixture f(message.c_str());
-    dbit_int_citr<ureg> beg(buf, bsize);
-    dbit_int_citr<ureg> end(beg + graph.size());
+    TimeFixture f("determine cycles on bitstrm vector");
+    mutable_bint_itr<ureg> beg(buf, bsize);
+    auto end(beg + graph.size());
     // cout << "bitstrm:\n" << endl;
     min_max_alt = graph_min_max_cycle(beg, end);
   }
@@ -326,7 +299,6 @@ generate_measure_and_check(std::vector<LINK>& graph, unsigned bsize){
     cout << "std min: " << min_max.first << " max: " << min_max.second << endl;
   }  
 }
-
 
 int main(int argc , const char** argv){
 

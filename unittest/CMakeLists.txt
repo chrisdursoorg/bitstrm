@@ -1,20 +1,27 @@
-cmake_minimum_required(VERSION 3.2.2)
+cmake_minimum_required(VERSION 3.5)
+
 
 # Unittest framework dependent on boost
 
 if("${USE_BOOST}")
 
-  set(TEST                       
+  message("this is a message")
+  
+  set(TEST
+    bitstrm_unittest.cpp
     bref_unittest.cpp
     reg_unittest.cpp
     print_unittest.cpp
-    utility_unittest.cpp   
-    bitstrm_unittest.cpp
-    bit_int_itr_unittest.cpp
+    utility_unittest.cpp
+    bint_itr_unittest.cpp
     )
 
 
-  find_package(Boost 1.4 COMPONENTS unit_test_framework)
+  if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+  endif()
+  find_package(Boost 1.86 COMPONENTS unit_test_framework)
+ 
   include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
   include_directories("${ROOT_INCLUDE}")
 

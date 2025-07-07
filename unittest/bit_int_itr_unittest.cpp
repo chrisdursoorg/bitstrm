@@ -1,25 +1,77 @@
-// bit_int_itr_unittest.cpp
+// bit_int_itr_details_unittest.cpp
 //
 
 #define BOOST_TEST_DYN_LINK
-
-#define BOOST_TEST_MODULE "BitIntIter"
+#define BOOST_TEST_MODULE "BitIntIterDetails"
 
 #include <boost/test/unit_test.hpp>
 #include "bitstrm/alloced_bref.hpp"
 #include "bitstrm/reg.hpp"
-#include "bitstrm/bref.hpp"
-#include "bitstrm/utility.hpp"
 #include "bitstrm/bit_int_itr.hpp"
-#include <limits>
-#include <algorithm>
-#include <iostream>
 #include <random>
 
 using namespace boost::unit_test;
 using namespace bitstrm;
 using namespace std;
 
+BOOST_AUTO_TEST_CASE(ctors) {
+
+  bref arbitrary;
+
+  // bit_int_itr<ureg>  an_unsigned_bit_int_itr;   if bwidth is going to be static, then you must specify it
+  bit_int_itr<12, ureg>  an_unsigned_bit_int_itr;
+  bit_int_itr<12, reg>   a_signed_bit_int_itr;
+  bit_int_citr<12, reg>  a_signed_bit_int_citr;
+  // an_unsigned_bit_int_itr = a_signed_bit_int_itr;  violated signed/unsigned ness
+  a_signed_bit_int_citr = a_signed_bit_int_itr;
+
+  bit_int_citr<12, ureg>  an_unsigned_bit_int_citr;
+
+
+  dbit_int_itr<ureg>  ok_to_have_dynamic_bsize_but_uninitialized;
+  dbit_int_citr<ureg> uninitialized_dynamic_and_const;
+  uninitialized_dynamic_and_const = ok_to_have_dynamic_bsize_but_uninitialized;
+
+
+  dbit_int_citr<ureg> make_it_42_wide(arbitrary, 42);
+  // ok_to_have_dynamic_bsize_but_uninitialized = make_it_42_wide;  violated assign const to nonconst
+  // dbit_int_itr<ureg> disallowed(make_it_42_wide);                violated constuct a nonconst from a const
+  uninitialized_dynamic_and_const = make_it_42_wide;
+  BOOST_TEST(make_it_42_wide.bwidth() == 42);
+  BOOST_TEST(uninitialized_dynamic_and_const.bwidth() == 42);
+  BOOST_TEST(an_unsigned_bit_int_itr.bwidth() == 12);
+  // make_it_42_wide = an_unsigned_bit_int_itr;  // throws an assert as bwidth  do not match
+}
+
+BOOST_AUTO_TEST_CASE(example1) {
+
+  alloced_bref p0(13 * 1);
+  bit_int_itr<13,ureg> a(p0);
+
+  *a = 40;
+  BOOST_TEST(*a    == 40);
+  BOOST_TEST(*a=42 == 42);
+  BOOST_TEST((*(--(++a))) == 42);
+}
+
+
+
+BOOST_AUTO_TEST_CASE(example2) {
+
+  alloced_bref buf(10*1024);
+  bit_int_itr<10, ureg> beg(buf);
+  bit_int_itr<10, ureg> end(beg + 10*1024);
+  BOOST_TEST(distance(beg,end) == 1024);
+
+#if 0
+  vector<unsigned> ans(distance(beg, end));
+
+  unsigned i = 0;
+  for_each(beg, end, [&i](unsigned v){ v = i++;});
+  random_shuffle(beg, end);
+#endif
+}
+#if 0
 BOOST_AUTO_TEST_CASE( store_values_two_different_ways )
 {
   // initializing arrays
@@ -193,39 +245,40 @@ BOOST_AUTO_TEST_CASE( sort_values )
 BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
 {
   // initializing arrays
-  typedef  std::vector<int> containerType;
-  containerType container{1,2,3,4,-4,5,6,7,192,323,3223};
+  typedef  std::vector<int> int_vec;
+  int_vec container{1,2,3,4,-4,5,6,7,192,323,3223};
   unsigned bitSz = min_bits(container.begin(),container.end());
-  const unsigned sentry = 4242;
+  constexpr unsigned sentry = 4242;
   unsigned sentrySz = 17;
   BOOST_CHECK(bitSz == 13);
-  unsigned paySz = bitSz*container.size();
-  alloced_bref buf(paySz+2*sentrySz);
+  unsigned const paySz = bitSz*container.size();
+  alloced_bref const buf(paySz+2*sentrySz);
 
-  bref p(buf+sentrySz);
+  bref p(buf + sentrySz);
   bref p0(p);
   bref pe(p + paySz);
-  
+
   buf.write(sentry, sentrySz);
   pe .write(sentry, sentrySz);
 
-  for_each(container.begin(), container.end(), [bitSz,&p](containerType::value_type value) { p.iwrite(value, bitSz); });
+  for_each(container.begin(), container.end(), [bitSz,&p](int_vec::value_type value) { p.iwrite(value, bitSz); });
   BOOST_CHECK(p == pe);
   BOOST_CHECK(buf.read<reg>(sentrySz) == sentry);
   BOOST_CHECK(pe.read <reg>(sentrySz) == sentry);
-  BOOST_CHECK(paySz == (unsigned)(p - p0));
+  BOOST_CHECK(paySz == static_cast<unsigned>(p - p0));
 
   // use std and bit_int_itr interators to check values
-  containerType::const_iterator b = container.begin();
-  containerType::const_iterator e = container.end();
+  int_vec::const_iterator b = container.begin();
+  int_vec::const_iterator e = container.end();
   p = p0;
   BOOST_CHECK( bitSz == 13); //  "A mix of lvalue and dynamic, fine as long as they remain the same"); 
   bit_int_itr<13,reg> verify(p);
   for(; b != e; ++b, ++verify)
-    BOOST_CHECK(*b == *verify);
+    BOOST_CHECK(*verify == *b);
 
-  bit_int_itr<13,reg> bc(p0);
-  bit_int_itr<13,reg> be(pe);
+  typedef bit_int_itr<13,reg> bit_13_s;
+  bit_13_s bc(p0);
+  bit_13_s be(pe);
 
   BOOST_CHECK(*bc == 1);
   BOOST_CHECK(*(bc+5) == 5); 
@@ -239,12 +292,12 @@ BOOST_AUTO_TEST_CASE(bit_int_itr_ops)
 
   BOOST_CHECK(*(be-2) == 323);
   BOOST_CHECK(*(be-1) == 3223);
-  swap(*(be-1), *(be-2));
+  bit_13_s::swap(*(be-1), *(be-2));
   BOOST_CHECK( buf.read<reg>(sentrySz) == sentry);
   BOOST_CHECK( pe .read<reg>(sentrySz) == sentry);
   BOOST_CHECK(*(be-1) == 323);
   BOOST_CHECK(*(be-2) == 3223);
-  swap(*(be-1), *(be-2)); // resore to original order/values
+  swap(*(be-1), *(be-2)); // restore to original order/values
   BOOST_CHECK( buf.read<reg>(sentrySz) == sentry);
   BOOST_CHECK( pe .read<reg>(sentrySz) == sentry);
   bc[5] = 5; 
@@ -448,7 +501,7 @@ BOOST_AUTO_TEST_CASE(code_example_1){
   bit_int_citr<10, ureg> cend(end);
 
   check = bit_int_itr<1, ureg>(checkbuf);
-  for(;cbeg != end; ++cbeg){
+  for(;cbeg != cend; ++cbeg){
     // assert(check[*cbeg]++ == 0); would seem elegent
     // but we have to do this in three statements
     auto ref_proxy = *(check + *cbeg);
@@ -473,19 +526,19 @@ BOOST_AUTO_TEST_CASE(code_example_2){
   mt19937 g(rd());
   shuffle(beg, end, g);
 
-  // fill check array with zero's 
+  // fill check_ array with zero's
   alloced_bref checkbuf(1024);
-  bit_int_itr<1, ureg> check(checkbuf);
-  for(auto e = check + 1024; check != e; ++check){ *check = 0;}
+  bit_int_itr<1, ureg> check_(checkbuf);
+  for(auto e = check_ + 1024; check_ != e; ++check_){ *check_ = 0;}
 
   dbit_int_citr<ureg> cbeg(beg);
   dbit_int_citr<ureg> cend(end);
-  
-  check = bit_int_itr<1, ureg>(checkbuf);
-  for(;cbeg != end; ++cbeg){
-    // assert(check[*cbeg]++ == 0); would seem elegent
+
+    check_ = bit_int_itr<1, ureg>(checkbuf);
+  for(;cbeg != cend; ++cbeg){
+    // assert(check_[*cbeg]++ == 0); would seem elegent
     // but we have to do this in three statements
-    auto ref_proxy = *(check + *cbeg);
+    reg ref_proxy = *(check_ + *cbeg);
     BOOST_CHECK_MESSAGE( ref_proxy == 0, "value: " << ref_proxy << " place: " << *cbeg);
     ref_proxy = 1;
   }
@@ -515,3 +568,4 @@ BOOST_AUTO_TEST_CASE(const_itr_2_itr_test){
   BOOST_CHECK(i3ctype1 == i3type0);
 
 }
+#endif

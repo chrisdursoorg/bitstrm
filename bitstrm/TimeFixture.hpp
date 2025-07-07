@@ -6,13 +6,15 @@
 #define BITSTREAM_TIMEFIXTURE_HPP
 
 #include <ctime>
+#include <iostream>
 #include <chrono>
+#include <string>
 
 namespace bitstrm{
   
   struct TimeFixture{
     
-    TimeFixture(const char* name, size_t unit = 0) 
+    TimeFixture(std::string const& name, size_t unit = 0) 
       : m_start(std::chrono::system_clock::now())
       , m_name(name)
       , m_number(s_timer_number++)
@@ -42,7 +44,7 @@ namespace bitstrm{
     
     static unsigned s_timer_number;
     std::chrono::time_point<std::chrono::system_clock> m_start;
-    const char* m_name;
+    const std::string m_name;
     const unsigned m_number;
     size_t m_unit;
   };

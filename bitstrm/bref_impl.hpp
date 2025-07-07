@@ -1,11 +1,7 @@
 // bref_impl.hpp
 //
-// NOT INTENDED FOR DIRECT REFERENCE -- IMPLEMATION ONLY
+// IMPLEMENTATION ONLY
 
-
-// OPERATORS BEGIN
-inline ureg
-bref::operator*()const { return read<ureg>(1); }
 
 inline bool
 bref::operator==(const bref& rhs)const{
@@ -114,12 +110,12 @@ bref::iwrite(ureg value, unsigned bsize){
   if(0 == bsize)
     return;
 
-  int shiftLeft = int(c_register_bits - m_off -bsize);
+  int shiftLeft = int(c_register_bits - m_off - bsize);
   
   // one register ?
   if(shiftLeft >= 0){
     // set value
-    *m_addr = endian_adj(merge(endian_adj(*m_addr), value << shiftLeft, mask(bsize) << shiftLeft));
+    *m_addr = merge(*m_addr, value << shiftLeft, mask(bsize) << shiftLeft);
     m_off += bsize;
     if(m_off == c_register_bits){
       ++m_addr;
@@ -130,13 +126,13 @@ bref::iwrite(ureg value, unsigned bsize){
     // m_addr
     unsigned firstBitSz =  c_register_bits-m_off;
     ureg firstValue = value >> (bsize - firstBitSz);
-    *m_addr = endian_adj(merge(endian_adj(*m_addr), firstValue, mask(firstBitSz)));
+    *m_addr = merge(*m_addr, firstValue, mask(firstBitSz));
     m_addr++;
     
     // m_addr + 1
     bsize -= firstBitSz;
     shiftLeft = unsigned(c_register_bits - bsize);
-    *m_addr = endian_adj(merge(endian_adj(*m_addr), value << shiftLeft, mask(bsize) << shiftLeft));
+    *m_addr = merge(*m_addr, value << shiftLeft, mask(bsize) << shiftLeft);
     m_off = bsize;
   }
 }
@@ -150,7 +146,7 @@ bref::read(unsigned bsize) const{
 template<typename REG_UREG>
 inline REG_UREG
 bref::iread(unsigned bsize){
-  assert(bsize <= c_register_bits && "read only defined for register bits");
+  assert(bsize <= c_register_bits && "read defined for [0, c_register_bits]");
 
   typedef typename std::conditional< std::is_signed<REG_UREG>::value, reg, ureg>::type REG_UREG_;
 
@@ -159,7 +155,7 @@ bref::iread(unsigned bsize){
   if(bsize == 0 )
       return 0; 
 
-  REG_UREG_ v(endian_adj(*m_addr) << m_off);
+  REG_UREG_ v(*m_addr << m_off);
   if(endpos < c_register_bits ){
     // capture beginning but not through first register
     m_off = endpos;
@@ -175,10 +171,10 @@ bref::iread(unsigned bsize){
     // second registers bits
     ++m_addr;
     m_off = endpos - c_register_bits;
-    v = v | ((ureg)(endian_adj(*m_addr))) >> (c_register_bits - m_off);
-  } else if( endpos == c_register_bits){
+    v = v | ((ureg)(*m_addr)) >> (c_register_bits - m_off);
+  } else { // ( endpos == c_register_bits)
     // capture beginning and exactly through first register
-    v >>= m_off; 
+    v >>= m_off;
     ++m_addr;
     m_off = 0;
   }
@@ -331,138 +327,32 @@ bref::iwrite_rle(REG_UREG value, unsigned kbit){
 
 ////////////////////////////////////////////////////////////////////////////////
 
-
 /*static*/
 inline reg
 bref::merge(ureg dest, ureg src, ureg mask) {return  dest ^ ((dest ^ src) & mask); }
 
-// norm_overflow_underflow
-// note not defined for 0
-// 
-inline void
-bref::norm_overflow_underflow(reg d){
- 
-  // m_off is either negative or greater than c_register_bits
-
-  if( d > 0) {
-    // positive case
-    m_off   =  (m_off & c_register_bit_addr_msk);
-    m_addr += (d >> c_register_bit_addr_sz);
-  } else {
-    // negative case
-    m_off   = c_register_bits + (d  % c_register_bits); 
-    m_addr += ( (d - c_register_bits + 1) / c_register_bits);
-  }      
-}
-
-
-// clz
-//
-// Count leading zero's.  Zero returns the number of bits in the register.
-
-template<typename _BASE>
-inline _BASE op_clz(_BASE);
-
-template<>
-inline uint64_t op_clz<uint64_t>(uint64_t i ){ return i ? __builtin_clzll(i): 64; }
-
-template<>
-inline uint32_t op_clz<uint32_t>(uint32_t i ){ return i ? __builtin_clz(i): 32; } 
-
-
-inline unsigned
+inline ureg
 bref::iclz(){
-  
-  // first shift left so pos[+0] is MSB
-  ureg  cur(endian_adj(*m_addr) << m_off);
-  
-  unsigned run       = op_clz<ureg>(cur);
+
+  reg*     addr      = m_addr;
+  ureg     cur       = *addr << m_off; // shift left so pos[0] is MSB
+  ureg     run       = op_clz<ureg>(cur);
   unsigned remaining = unsigned(c_register_bits - m_off);
-  
-  if( run < remaining ){
-    // count complete on current register
-    m_off += (run + 1);
-    norm();
-    return run;
+
+  if( run >= remaining ){
+    // if not complete on register[0]
+    run = remaining;
+    ureg rrun;
+    do {
+      rrun =  op_clz<ureg>(*(++addr));
+      run  += rrun;
+    } while(rrun == c_register_bits);  
   }
   
-  // must continue to further registers
-  run = remaining;
-  unsigned locRun;
-  do {
-    locRun = op_clz<ureg>(endian_adj(*(++m_addr)));
-    run  += locRun;
-  } while(locRun == c_register_bits);  
-
-  m_off = (locRun + 1);
+  m_off += run;
   norm();
   return run;
 }
-
-
-
-// TODO: copy optimization! 
-// 0) copy x bits src until dst 1/2 register allignment
-// 1) shift right src by x, copy rh 1/2 register to dst
-// 2) repeat 1 until src.addr == end.addr
-// 3) copy src x bits to dst 
-//
-inline 
-bref 
-copy(bref begin, bref end, bref dest){
-  
-  reg bsize = bref::subtract(end, begin);
-  for(;bsize >= c_register_bits; bsize -= c_register_bits)
-    dest.iwrite(begin.iread<ureg>(c_register_bits), c_register_bits);
-
-  dest.iwrite(begin.iread<ureg>(bsize), bsize);
- 
-  return dest;
-}
-
-// TODO: follow copy allignment optimization
-inline 
-bool 
-equal(bref begin, bref last, bref second){
-  
-  reg size = bref::subtract(last, begin);
-  for(;size >= c_register_bits; size -= c_register_bits)
-    if( second.iread<ureg>(c_register_bits) !=  begin.iread<ureg>(c_register_bits))
-      return false;
-
-  if( size && (second.iread<ureg>(size) !=  begin.iread<ureg>(size)))
-    return false;
- 
-  return true;
-}
-
-inline bref
-clz(bref beg, bref end){
-  reg* addr = beg.m_addr;
-  // first shift left so pos[+0] is MSB
-  ureg  cur(endian_adj(*addr) << beg.m_off);
-  
-  unsigned  run      = op_clz<ureg>(cur);
-  unsigned remaining = unsigned(c_register_bits - beg.m_off);
-  
-  if( run >= remaining and (++addr != end.m_addr)){
-    // must continue to further registers
-    run = remaining;
-    unsigned locRun;
-    do {
-      locRun = op_clz<ureg>(endian_adj(*(addr)));
-      run    += locRun;
-    } while(locRun == c_register_bits and ++addr < end.m_addr);  
-  }
-  
-  return std::min(beg + run, end);
-}
-
-template<class _BASE> unsigned op_pop_count(_BASE);
-
-template<> inline unsigned op_pop_count<unsigned>(unsigned x)                    { return __builtin_popcount(x);   }
-template<> inline unsigned op_pop_count<unsigned long>(unsigned long x)          { return __builtin_popcountl(x);  }
-template<> inline unsigned op_pop_count<unsigned long long>(unsigned long long x){ return __builtin_popcountll(x); }
 
 inline 
 ureg
@@ -470,10 +360,10 @@ popcount(bref cur, bref end){
   ureg count = 0;
 
   // lead
-  for(;cur.m_off != 0; ++cur){
+  for(;cur.m_off != 0;){
     if(cur == end)
       return count;
-    if(*cur)
+    if(cur.iread<ureg>(1))
       ++count;
   }
 
@@ -482,8 +372,8 @@ popcount(bref cur, bref end){
     count += op_pop_count<ureg>(*cur.m_addr);
 
   // tail
-  for(;cur != end; ++cur)
-    if(*cur)
+  for(;cur != end;)
+    if(cur.iread<ureg>(1))
       ++count;
   
   return count;

@@ -204,5 +204,18 @@ BOOST_AUTO_TEST_CASE(bit_numeric_limits){
   BOOST_CHECK(numeric_limits_unsigned_max(64) ==  ULLONG_MAX);
 }
 
+BOOST_AUTO_TEST_CASE(test_clz){
+  ureg v = numeric_limits_unsigned_max(c_register_bits);
+  for(unsigned i = 0; i < c_register_bits; ++i, v = v >> 1){
+    BOOST_CHECK(op_clz(v) == i);
+  }
+  BOOST_CHECK(op_clz(v) == c_register_bits);
+}
 
+BOOST_AUTO_TEST_CASE(test_pop_count){
+  ureg v = numeric_limits_unsigned_max(c_register_bits);
+  for(int i = c_register_bits; i >= 0; --i, v = v >> 1){
+    BOOST_CHECK(op_pop_count(v) == unsigned(i));
+  }
+}
 

@@ -8,33 +8,36 @@
 #include "bitstrm/reg.hpp"
 #include "bitstrm/alloced_bref.hpp"
 #include "bitstrm/utility.hpp"
-#include "bitstrm/bit_int_itr.hpp"
+#include "bitstrm/bint_itr.hpp"
 #include "bitstrm/TimeFixture.hpp"
-#include <boost/lexical_cast.hpp>
+#include <sstream>
+
 using namespace bitstrm;
 using namespace std;
 
 
 unsigned bitstrm::TimeFixture::s_timer_number = 0;
 
+
 int main(int /*argc*/ , const char** /*argv*/){
 
   const size_t testSize = 1024*1024;
 
-  string message(string("sort ") + boost::lexical_cast<string>(testSize) + " signed random elements of size 10 bits");
-  TimeFixture fixture(message.c_str());
+  stringstream str;
+  str << "sort " << testSize << " signed random elements of size 10 bits";
+  TimeFixture fixture(str.str());
   vector<reg>             testSet64(testSize);  
   vector<reg>  ::iterator c64(testSet64.begin());
   vector<short>           testSet16(testSize);
   vector<short>::iterator c16(testSet16.begin());
   const reg               ten_bit_mask((1<<10) -1);
-  alloced_bref buf(testSize*10);
-  bit_int_itr<10,reg>     b0(buf);
-  bit_int_itr<10,reg>     bc(b0);
+  alloced_bref            buf(testSize*10);
+  mutable_bint_itr<reg>   b0(buf, 10);
+  auto                    bc(b0);
   {
-    string msg(string("created ") + boost::lexical_cast<string>(testSize) 
-     + " random elements storing as reg, short and 10 bit reg");
-    TimeFixture fixture(msg.c_str());
+    stringstream str;
+    str << "created " << testSize << " random elements storing as reg, short and 10 bit reg";
+    TimeFixture fixture(str.str());
     for(vector<reg>::iterator e = testSet64.end(); 
         c64 < e; 
         ++c64, ++c16,  ++bc)
@@ -47,7 +50,7 @@ int main(int /*argc*/ , const char** /*argv*/){
         *bc = *c16 = *c64 = ten_bit_number;
       }
   }
-  bit_int_itr<10,reg> be(bc);
+  auto be(bc);
   bc = b0;
         
   {

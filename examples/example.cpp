@@ -2,9 +2,8 @@
 
 #include <iostream>
 #include <array>
-#include "bitstrm/utility.hpp"
-#include "bitstrm/alloced_bref.hpp"
-#include <vector>
+#include <bitstrm/utility.hpp>
+#include <bitstrm/alloced_bref.hpp>
 #include <cassert>
 
 using namespace std; 
@@ -68,9 +67,9 @@ int main(int /*argc*/, const char** /*argv*/){
   }
   
   cout << "total_bits: " << total_bits << " bytes: " 
-       << bref::_chars(total_bits) << " bits/number: " 
+       << total_bits/8 << " bits/number: " 
        << double(total_bits)/data.size() 
-       << " savings: " << (1. - double(bref::_chars(total_bits))/(data.size()*sizeof(unsigned long long)))*100. 
+       << " savings: " << (1. - double(total_bits/8)/(data.size()*sizeof(reg)))*100. 
        << "%" << endl;
 
   // second pass through the data, now code
@@ -99,8 +98,6 @@ int main(int /*argc*/, const char** /*argv*/){
   
   // verify that we can decode all the original values
   cur_bits = 0;
-  wasted_bits = 6;
-  first = true;
   cur.reset();
   bool read_bit_size = true;
   for(auto a : data){
